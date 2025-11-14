@@ -1,0 +1,2 @@
+# GuideMate
+Utazástervező platform
