@@ -4,4 +4,5 @@ export default function ProfilOldal() {
       Profil oldal működik
     </div>
   );
+  return <div>Profil oldal</div>;
 }

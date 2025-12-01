@@ -122,3 +122,10 @@ export default function NavigaciosSav() {
     </Box>
   );
 }
+export default function NavigaciosSav() {
+  return (
+    <nav>
+      Navigációs sáv
+    </nav>
+  );
+}
