@@ -1,3 +1,7 @@
 export default function ProfilOldal() {
-  return <div>Profil oldal</div>;
+  return (
+    <div style={{ padding: "40px", fontSize: "28px", color: "black" }}>
+      Profil oldal működik
+    </div>
+  );
 }
