@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider     = "prisma-client-js"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Felhasznalo {
+  felhsznalo_id    Int               @id @default(autoincrement())
+  nev              String
+  email            String            @unique
+  jelszo           String
+  szerepkor        String?
+  utazasResztvevok UtazasResztvevo[]
+}
+
+model Helyszin {
+  helyszin_id  Int         @id @default(autoincrement())
+  orszag       String
+  varos        String
+  iranyitoszam String?
+  utca         String
+  hazszam      String?
+  szelesseg    Decimal?    @db.Decimal(10, 7)
+  hosszusag    Decimal?    @db.Decimal(10, 7)
+  latnivalok   Latnivalo[]
+}
+
+model Utazas {
+  utazas_id   Int       @id @default(autoincrement())
+  nev         String
+  leiras      String?
+  kezdo_datum DateTime?
+  veg_datum   DateTime?
+
+  resztvevok UtazasResztvevo[]
+  programok  Program[]
+  foglalasok Foglalas[]
+  listak     EllenorzoLista[]
+}
+
+model UtazasResztvevo {
+  utazas_id         Int
+  felhasznalo_id    Int
+  szerep            String?
+  csatlakozas_ideje DateTime?
+
+  utazas      Utazas      @relation(fields: [utazas_id], references: [utazas_id])
+  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhsznalo_id])
+
+  @@id([utazas_id, felhasznalo_id])
+}
+
+model Latnivalo {
+  latnivalo_id Int     @id @default(autoincrement())
+  helyszin_id  Int
+  nev          String
+  kategoria    String?
+  kep_url      String?
+  leiras       String?
+
+  helyszin         Helyszin           @relation(fields: [helyszin_id], references: [helyszin_id])
+  programLatnivalo ProgramLatnivalo[]
+}
+
+model Program {
+  program_id  Int       @id @default(autoincrement())
+  utazas_id   Int
+  program_nev String
+  nap_datum   DateTime?
+
+  utazas     Utazas             @relation(fields: [utazas_id], references: [utazas_id])
+  latnivalok ProgramLatnivalo[]
+}
+
+model ProgramLatnivalo {
+  program_id   Int
+  latnivalo_id Int
+  tipus        String
+  sorrend      Int
+
+  program   Program   @relation(fields: [program_id], references: [program_id])
+  latnivalo Latnivalo @relation(fields: [latnivalo_id], references: [latnivalo_id])
+
+  @@id([program_id, latnivalo_id])
+}
+
+model Foglalas {
+  foglalas_id    Int      @id @default(autoincrement())
+  utazas_id      Int
+  foglalas_tipus String
+  indulasi_hely  String
+  erkezesi_hely  String
+  indulasi_ido   DateTime
+  erkezesi_ido   DateTime
+  jaratszam      String?
+
+  utazas Utazas @relation(fields: [utazas_id], references: [utazas_id])
+}
+
+model EllenorzoLista {
+  lista_id  Int    @id @default(autoincrement())
+  utazas_id Int
+  lista_nev String
+
+  utazas Utazas      @relation(fields: [utazas_id], references: [utazas_id])
+  elemek ListaElem[]
+}
+
+model ListaElem {
+  elem_id    Int     @id @default(autoincrement())
+  lista_id   Int
+  megnevezes String
+  kipipalva  Boolean @default(false)
+
+  lista EllenorzoLista @relation(fields: [lista_id], references: [lista_id])
+}
