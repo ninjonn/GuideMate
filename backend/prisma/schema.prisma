@@ -18,8 +18,21 @@ model Felhasznalo {
   nev              String
   email            String            @unique
   jelszo           String
-  szerepkor        String?
+  szerepkor        String
   utazasResztvevok UtazasResztvevo[]
+  tokenek          UserAccessToken[]
+}
+
+model UserAccessToken {
+  token_id       String   @id @default(uuid())
+  felhasznalo_id Int
+  nev            String
+  date_created   DateTime @default(now())
+  expiration     DateTime
+
+  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhsznalo_id])
+
+  @@index([felhasznalo_id])
 }
 
 model Helyszin {
@@ -35,11 +48,11 @@ model Helyszin {
 }
 
 model Utazas {
-  utazas_id   Int       @id @default(autoincrement())
+  utazas_id   Int      @id @default(autoincrement())
   nev         String
   leiras      String?
-  kezdo_datum DateTime?
-  veg_datum   DateTime?
+  kezdo_datum DateTime
+  veg_datum   DateTime
 
   resztvevok UtazasResztvevo[]
   programok  Program[]
