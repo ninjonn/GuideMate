@@ -141,3 +141,11 @@ vite.config.ts.timestamp-*
 /generated/prisma
 
 package-lock.json
+
+.env
+
+.DS_Store
+.idea/
+.vscode/
+
+.pnpm-store/
