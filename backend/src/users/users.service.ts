@@ -1,25 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma.service';
 
 export type User = any;
 
 @Injectable()
 export class UsersService {
-  private readonly users = [
-    {
-      userId: 1,
-      username: 'john',
-      email: 'john@example.com',
-      password: 'changeme',
-    },
-    {
-      userId: 12,
-      username: 'maria',
-      email: 'maria@example.com',
-      password: 'guess',
-    },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
-  async findOneByEmail(email: string): Promise<User | undefined> {
-    return this.users.find((user) => user.email === email);
+  async findOneByEmail(email: string) {
+    return this.prisma.felhasznalo.findUnique({ where: { email } });
+  }
+
+  createUser(params: {
+    nev: string;
+    email: string;
+    jelszo_hash: string;
+    szerepkor?: string;
+  }) {
+    const { nev, email, jelszo_hash, szerepkor = 'felhasznalo' } = params;
+    return this.prisma.felhasznalo.create({
+      data: { nev, email, jelszo_hash, szerepkor },
+    });
   }
 }

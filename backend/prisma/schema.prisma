@@ -5,20 +5,21 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider     = "prisma-client-js"
-  moduleFormat = "cjs"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Felhasznalo {
-  felhsznalo_id    Int               @id @default(autoincrement())
+  felhasznalo_id   Int               @id @default(autoincrement())
   nev              String
   email            String            @unique
-  jelszo           String
-  szerepkor        String
+  jelszo_hash      String
+  szerepkor        String            @default("felhasznalo")
+  letrehozva       DateTime          @default(now())
   utazasResztvevok UtazasResztvevo[]
   tokenek          UserAccessToken[]
 }
@@ -30,7 +31,7 @@ model UserAccessToken {
   date_created   DateTime @default(now())
   expiration     DateTime
 
-  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhsznalo_id])
+  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id])
 
   @@index([felhasznalo_id])
 }
@@ -67,7 +68,7 @@ model UtazasResztvevo {
   csatlakozas_ideje DateTime?
 
   utazas      Utazas      @relation(fields: [utazas_id], references: [utazas_id])
-  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhsznalo_id])
+  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id])
 
   @@id([utazas_id, felhasznalo_id])
 }
