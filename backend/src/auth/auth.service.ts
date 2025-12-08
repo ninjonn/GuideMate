@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
 
@@ -9,12 +13,63 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async signIn(email: string, pass: string): Promise<{ access_token: string }> {
-    const user = await this.usersService.findOneByEmail(email);
-    if (user?.password !== pass) {
+  async signInHu(
+    email: string,
+    jelszo: string,
+  ): Promise<{
+    token: string;
+    felhasznalo: {
+      azonosito: number;
+      nev: string;
+      email: string;
+      szerepkor: string;
+    };
+  }> {
+    const baseUser = await this.usersService.findOneByEmail(email);
+    if (!baseUser || baseUser.password !== jelszo) {
       throw new UnauthorizedException();
     }
-    const payload = { sub: user.userId, email: user.email };
-    return { access_token: await this.jwtService.signAsync(payload) };
+    const payload = { sub: baseUser.userId, email: baseUser.email };
+    const token = await this.jwtService.signAsync(payload);
+    return {
+      token,
+      felhasznalo: {
+        azonosito: baseUser.userId,
+        nev: baseUser.username,
+        email: baseUser.email,
+        szerepkor: baseUser.role,
+      },
+    };
+  }
+
+  async signUpHu(
+    vezeteknev: string,
+    keresztnev: string,
+    email: string,
+    jelszo: string,
+  ): Promise<{
+    azonosito: number;
+    nev: string;
+    email: string;
+    szerepkor: string;
+    regisztracio_datum: string;
+  }> {
+    const existing = await this.usersService.findOneByEmail(email);
+    if (existing) {
+      throw new BadRequestException('Ezzel az emaillel már regisztráltak.');
+    }
+    const username = `${vezeteknev} ${keresztnev}`.trim();
+    const user = await this.usersService.createUser({
+      username,
+      email,
+      password: jelszo,
+    });
+    return {
+      azonosito: user.userId,
+      nev: user.username,
+      email: user.email,
+      szerepkor: user.role,
+      regisztracio_datum: user.createdAt.toISOString(),
+    };
   }
 }
