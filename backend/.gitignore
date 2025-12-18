@@ -149,3 +149,4 @@ package-lock.json
 .vscode/
 
 .pnpm-store/
+pnpm-workspace.yaml

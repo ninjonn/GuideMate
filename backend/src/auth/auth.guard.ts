@@ -1,51 +1,27 @@
-import {
-  CanActivate,
-  Injectable,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
+import { Observable } from 'rxjs';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 @Injectable()
-export class AuthGuard implements CanActivate {
-  constructor(
-    private jwtService: JwtService,
-    private reflector: Reflector,
-  ) {}
+export class AuthGuard extends PassportAuthGuard('jwt') {
+  constructor(private reflector: Reflector) {
+    super();
+  }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(
+    context: ExecutionContext,
+  ): boolean | Promise<boolean> | Observable<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
+
     if (isPublic) {
       return true;
     }
 
-    const request = context
-      .switchToHttp()
-      .getRequest<Request & { user?: { sub: number; email: string } }>();
-    const token = this.extractTokenFromHeader(request);
-    if (!token) {
-      throw new UnauthorizedException();
-    }
-    try {
-      const payload = await this.jwtService.verifyAsync<{
-        sub: number;
-        email: string;
-      }>(token);
-      request.user = payload;
-    } catch {
-      throw new UnauthorizedException();
-    }
-    return true;
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    return super.canActivate(context);
   }
 }
