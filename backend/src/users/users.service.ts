@@ -1,56 +1,52 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma.service';
+import { Felhasznalo } from '@prisma/client';
 
 export interface User {
   userId: number;
   username: string;
   email: string;
-  password: string;
+  passwordHash: string;
   role: string;
   createdAt: Date;
 }
 
 @Injectable()
 export class UsersService {
-  private readonly users: User[] = [
-    {
-      userId: 1,
-      username: 'john',
-      email: 'john@example.com',
-      password: 'changeme',
-      role: 'user',
-      createdAt: new Date('2025-01-01T00:00:00Z'),
-    },
-    {
-      userId: 12,
-      username: 'maria',
-      email: 'maria@example.com',
-      password: 'guess',
-      role: 'user',
-      createdAt: new Date('2025-01-02T00:00:00Z'),
-    },
-  ];
+  constructor(private readonly prisma: PrismaService) {}
 
   async findOneByEmail(email: string): Promise<User | undefined> {
-    const user = this.users.find((u) => u.email === email);
-    return await Promise.resolve(user);
+    const record = await this.prisma.felhasznalo.findUnique({ where: { email } });
+    if (!record) {
+      return undefined;
+    }
+    return this.mapToUser(record);
   }
 
   async createUser(data: {
     username: string;
     email: string;
-    password: string;
+    passwordHash: string;
   }): Promise<User> {
-    const nextId =
-      this.users.reduce((max, user) => Math.max(max, user.userId), 0) + 1;
-    const newUser: User = {
-      userId: nextId,
-      username: data.username,
-      email: data.email,
-      password: data.password,
-      role: 'user',
-      createdAt: new Date(),
+    const created = await this.prisma.felhasznalo.create({
+      data: {
+        nev: data.username,
+        email: data.email,
+        jelszo_hash: data.passwordHash,
+        szerepkor: 'felhasznalo',
+      },
+    });
+    return this.mapToUser(created);
+  }
+
+  private mapToUser(record: Felhasznalo): User {
+    return {
+      userId: record.felhasznalo_id,
+      username: record.nev,
+      email: record.email,
+      passwordHash: record.jelszo_hash,
+      role: record.szerepkor,
+      createdAt: record.letrehozva,
     };
-    this.users.push(newUser);
-    return await Promise.resolve(newUser);
   }
 }
