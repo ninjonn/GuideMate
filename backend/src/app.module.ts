@@ -11,10 +11,12 @@ import { LatnivaloModule } from './latnivalo/latnivalo.module';
 import { HelyszinModule } from './helyszin/helyszin.module';
 import { EllenorzoListaModule } from './ellenorzo-lista/ellenorzo-lista.module';
 import { ListaElemModule } from './lista-elem/lista-elem.module';
+import { PrismaModule } from './prisma.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
     AuthModule,
     UsersModule,
     UtazasModule,
