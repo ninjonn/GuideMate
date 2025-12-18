@@ -5,9 +5,12 @@ import {
 } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
+  private readonly saltRounds = 10;
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -26,7 +29,11 @@ export class AuthService {
     };
   }> {
     const baseUser = await this.usersService.findOneByEmail(email);
-    if (!baseUser || baseUser.password !== jelszo) {
+    if (!baseUser) {
+      throw new UnauthorizedException();
+    }
+    const passwordMatch = await bcrypt.compare(jelszo, baseUser.passwordHash);
+    if (!passwordMatch) {
       throw new UnauthorizedException();
     }
     const payload = { sub: baseUser.userId, email: baseUser.email };
@@ -59,10 +66,11 @@ export class AuthService {
       throw new BadRequestException('Ezzel az emaillel már regisztráltak.');
     }
     const username = `${vezeteknev} ${keresztnev}`.trim();
+    const passwordHash = await bcrypt.hash(jelszo, this.saltRounds);
     const user = await this.usersService.createUser({
       username,
       email,
-      password: jelszo,
+      passwordHash,
     });
     return {
       azonosito: user.userId,
