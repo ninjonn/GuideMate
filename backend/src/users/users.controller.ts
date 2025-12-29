@@ -41,13 +41,14 @@ export class UsersController {
     if (!user) {
       throw new UnauthorizedException('Felhasználó nem található.');
     }
+    const tripCount = await this.usersService.countTripsForUser(user.userId);
     return {
       azonosito: user.userId,
       nev: user.username,
       email: user.email,
       regisztracio_datum: user.createdAt.toISOString(),
       szerepkor: user.role,
-      utazasok_szama: 0,
+      utazasok_szama: tripCount,
     };
   }
 
