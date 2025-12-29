@@ -83,6 +83,12 @@ export class UsersService {
     });
   }
 
+  async countTripsForUser(userId: number): Promise<number> {
+    return await this.prisma.utazasResztvevo.count({
+      where: { felhasznalo_id: userId },
+    });
+  }
+
   private mapToUser(record: FelhasznaloRecord): User {
     return {
       userId: record.felhasznalo_id,
