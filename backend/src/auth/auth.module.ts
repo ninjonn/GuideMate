@@ -12,8 +12,10 @@ import { JwtStrategy } from './jwt.strategy';
 @Module({
   imports: [
     ConfigModule,
+    // Users modul kell a regisztraciohoz es bejelentkezeshez.
     UsersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    // JWT beallitasok kornyezeti valtozobol, 1 oras lejarattal.
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
@@ -25,11 +27,14 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
+  // Globalis guard + JWT strategia.
   providers: [
     AuthService,
     JwtStrategy,
+    // Minden vegpontra automatikusan kerul a guard, kiveve a @Public-ot.
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
+  // A service exportalva, hogy mas modulok is hivhassak.
   exports: [AuthService],
 })
 export class AuthModule {}
