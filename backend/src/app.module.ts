@@ -15,10 +15,13 @@ import { PrismaModule } from './prisma.module';
 
 @Module({
   imports: [
+    // Globalis config + DB + feature modulok, innen indul az app.
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    // Auth es users modulok a bejelentkezeshez es profilhoz.
     AuthModule,
     UsersModule,
+    // Domain modulok a tobbi endpoint logikajahoz.
     UtazasModule,
     FoglalasModule,
     ProgramModule,
