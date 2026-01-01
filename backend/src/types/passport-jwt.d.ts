@@ -17,6 +17,9 @@ declare module 'passport-jwt' {
 
   // A Strategy osztaly, amit a PassportStrategy becsomagol.
   export class Strategy {
-    constructor(options: StrategyOptions, verify?: (...args: unknown[]) => void);
+    constructor(
+      options: StrategyOptions,
+      verify?: (...args: unknown[]) => void,
+    );
   }
 }
