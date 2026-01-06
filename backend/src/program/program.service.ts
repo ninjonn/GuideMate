@@ -71,8 +71,8 @@ export class ProgramService {
 
     // Valasz formatum osszerakasa.
     const items = programok.map((program) => {
-      // Letrehozas datuma egyszeruen a nap_datum, ha nincs akkor most.
-      const letrehozva = program.nap_datum ?? new Date();
+      // Letrehozas_datuma a DB-ben tarolt letrehozva mezobol jon.
+      const letrehozva = program.letrehozva;
       return {
         azonosito: program.program_id,
         nev: program.program_nev,
@@ -101,7 +101,6 @@ export class ProgramService {
       throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
     }
 
-    const now = new Date();
     const created = await this.prisma.program.create({
       data: {
         utazas_id: utazasId,
@@ -113,15 +112,14 @@ export class ProgramService {
     // A nap_datum formatumot biztositjuk a valaszhoz.
     const napDatum =
       this.formatDate(created.nap_datum) ??
-      this.formatDate(now) ??
-      now.toISOString().slice(0, 10);
+      created.letrehozva.toISOString().slice(0, 10);
 
     return {
       azonosito: created.program_id,
       utazas_id: created.utazas_id,
       nev: created.program_nev,
       nap_datum: napDatum,
-      letrehozas_datuma: now.toISOString(),
+      letrehozas_datuma: created.letrehozva.toISOString(),
     };
   }
 
