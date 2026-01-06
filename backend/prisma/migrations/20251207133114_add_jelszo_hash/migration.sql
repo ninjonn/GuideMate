@@ -1,3 +1,4 @@
+-- Active: 1764870701232@@127.0.0.1@3306@guidemate
 -- CreateTable
 CREATE TABLE `Felhasznalo` (
     `felhasznalo_id` INTEGER NOT NULL AUTO_INCREMENT,
