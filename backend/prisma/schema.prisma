@@ -89,6 +89,7 @@ model Program {
   utazas_id   Int
   program_nev String
   nap_datum   DateTime?
+  letrehozva  DateTime  @default(now())
 
   utazas     Utazas             @relation(fields: [utazas_id], references: [utazas_id])
   latnivalok ProgramLatnivalo[]
@@ -115,6 +116,11 @@ model Foglalas {
   indulasi_ido   DateTime
   erkezesi_ido   DateTime
   jaratszam      String?
+  letrehozva      DateTime @default(now())
+  hely            String?
+  cim             String?
+  kezdo_datum     DateTime?
+  veg_datum       DateTime?
 
   utazas Utazas @relation(fields: [utazas_id], references: [utazas_id])
 }
