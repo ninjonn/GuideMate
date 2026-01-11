@@ -11,8 +11,9 @@ import JegyKovetesOldal from "../../oldalak/JegyKovetesOldal/JegyKovetesOldal";
 import ProfilOldal from "../../oldalak/ProfilOldal/ProfilOldal";
 import AdminOldal from "../../oldalak/AdminOldal/AdminOldal";
 import NemTalalhato from "../../oldalak/NemTalalhato/NemTalalhato";
+import UjJegyForm from "../../oldalak/JegyKovetesOldal/UjJegyForm";
 
-// ROUTER EXPORT
+// ROUTER EXPORTJA
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -89,5 +90,14 @@ export const router = createBrowserRouter([
   {
     path: "*",
     element: <NemTalalhato />,
+  },
+  {
+    path: "/jegykovetes/uj-jegy",
+    element: (
+      <>
+        <NavigaciosSav />
+        <UjJegyForm />
+      </>
+    ),
   },
 ]);
