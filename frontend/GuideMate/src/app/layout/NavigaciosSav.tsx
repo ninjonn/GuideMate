@@ -2,6 +2,8 @@ import {
   Box,
   Flex,
   HStack,
+  VStack,
+  Collapse,
   Link as ChakraLink,
   useDisclosure,
   IconButton,
@@ -29,6 +31,8 @@ const ProfileIcon = (props: IconProps) => (
 
 export default function NavigaciosSav() {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  
+  // Ez figyeli, hogy melyik URL-en vagyunk éppen
   const location = useLocation();
 
   const menuItems = [
@@ -38,50 +42,62 @@ export default function NavigaciosSav() {
     { label: "Jegykövetés", to: "/jegykovetes" },
   ];
 
+  // Helper function a stílusokhoz
+  const getLinkStyles = (isActive: boolean) => ({
+    bg: isActive ? "rgba(255, 255, 255, 0.15)" : "transparent",
+    hoverBg: isActive ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.1)",
+    backdropFilter: isActive ? "blur(4px)" : "none",
+  });
+
   return (
     <Box
+      as="nav"
       w="100%"
-      bgGradient="linear(to-r, #63A4FF, #417BFB)"
-      px={{ base: 4, md: 8 }}
-      py={4}
-      color="white"
-      position="sticky"
+      bg="transparent"
+      position="absolute"
       top="0"
+      left="0"
+      right="0"
+      px={{ base: 4, md: 8 }}
+      py={6}
+      color="white"
       zIndex="1000"
     >
       <Flex align="center" justify="space-between" maxW="1440px" mx="auto">
         {/* LOGÓ */}
         <Text
-          fontSize="36px"
+          fontSize="32px"
           fontWeight="700"
           lineHeight="110%"
           letterSpacing="-0.02em"
           textShadow="0 4px 4px rgba(0,0,0,0.25)"
+          cursor="pointer"
         >
           GuideMate
         </Text>
 
         {/* DESKTOP MENÜ */}
-        <HStack spacing={10} display={{ base: "none", md: "flex" }}>
+        <HStack spacing={6} display={{ base: "none", md: "flex" }}>
           {menuItems.map((item) => {
             const isActive = location.pathname === item.to;
+            const styles = getLinkStyles(isActive);
 
             return (
               <ChakraLink
                 key={item.to}
                 as={RouterLink}
                 to={item.to}
-                fontSize="20px"
-                fontWeight="500"
-                px={6} // több padding, hogy téglalap legyen
-                py={3}
-                borderRadius="12px" // ← Figma szerinti enyhe lekerekítés
-                bg={isActive ? "rgba(255,255,255,0.25)" : "transparent"} // Figma stílus
-                color="white"
-                transition="0.2s"
+                fontSize="18px"
+                fontWeight="400"
+                px={5} 
+                py={2.5} 
+                borderRadius="12px"
+                transition="all 0.3s ease"
+                bg={styles.bg}
+                backdropFilter={styles.backdropFilter}
                 _hover={{
-                  bg: "rgba(255,255,255,0.18)", // kicsit halványabb hover
                   textDecoration: "none",
+                  bg: styles.hoverBg,
                 }}
               >
                 {item.label}
@@ -90,20 +106,20 @@ export default function NavigaciosSav() {
           })}
         </HStack>
 
-        {/* PROFIL IKON */}
+        {/* PROFIL IKON (Desktop) */}
         <Flex
           as={RouterLink}
           to="/profil"
           display={{ base: "none", md: "flex" }}
           align="center"
           justify="center"
-          w="42px"
-          h="42px"
-          borderRadius="12px"
-          border="1px solid white"
+          w="48px"
+          h="48px"
+          borderRadius="14px"
+          border="1px solid rgba(255, 255, 255, 0.4)"
           cursor="pointer"
           transition="0.2s"
-          _hover={{ bg: "whiteAlpha.200" }}
+          _hover={{ bg: "whiteAlpha.200", borderColor: "white" }}
         >
           <ProfileIcon boxSize={6} />
         </Flex>
@@ -115,10 +131,79 @@ export default function NavigaciosSav() {
           icon={isOpen ? <CloseIcon /> : <HamburgerIcon />}
           variant="ghost"
           color="white"
-          _hover={{ bg: "rgba(255,255,255,0.20)" }}
+          fontSize="24px"
+          _hover={{ bg: "whiteAlpha.200" }}
           onClick={isOpen ? onClose : onOpen}
         />
       </Flex>
+
+      {/* MOBIL MENÜ */}
+      <Collapse in={isOpen} animateOpacity>
+        <Box
+          mt={4}
+          p={4}
+          display={{ md: "none" }}
+          // Glassmorphism konténer stílus mindennél 
+          bg="rgba(255, 255, 255, 0.1)"
+          backdropFilter="blur(12px)"
+          borderRadius="12px"
+          border="1px solid rgba(255, 255, 255, 0.2)"
+          boxShadow="0 8px 32px 0 rgba(31, 38, 135, 0.15)"
+        >
+          <VStack spacing={2} align="stretch">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.to;
+              const styles = getLinkStyles(isActive);
+
+              return (
+                <ChakraLink
+                  key={item.to}
+                  as={RouterLink}
+                  to={item.to}
+                  onClick={onClose} // Menü bezárása kattintáskor
+                  w="100%"
+                  textAlign="center"
+                  fontSize="18px"
+                  fontWeight="500"
+                  py={3} // 48-56px magasság elérése a paddinggal
+                  borderRadius="12px"
+                  transition="all 0.3s ease"
+                  bg={styles.bg}
+                  _hover={{
+                    textDecoration: "none",
+                    bg: styles.hoverBg,
+                  }}
+                >
+                  {item.label}
+                </ChakraLink>
+              );
+            })}
+            
+            {/* Opcionális: Profil gomb a mobil menü aljára, ha szükséges */}
+            <ChakraLink
+              as={RouterLink}
+              to="/profil"
+              onClick={onClose}
+              w="100%"
+              textAlign="center"
+              fontSize="18px"
+              fontWeight="500"
+              py={3}
+              borderRadius="12px"
+              transition="all 0.3s ease"
+              _hover={{ bg: "rgba(255, 255, 255, 0.1)" }}
+              border="1px solid rgba(255, 255, 255, 0.2)"
+              mt={2}
+            >
+              <HStack justify="center" spacing={3}>
+                 <ProfileIcon boxSize={5} />
+                 <Text>Profil</Text>
+              </HStack>
+            </ChakraLink>
+
+          </VStack>
+        </Box>
+      </Collapse>
     </Box>
   );
 }
