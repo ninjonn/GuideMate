@@ -1,8 +1,21 @@
-export default function ProfilOldal() {
+import React from 'react';
+import { Box, Center } from '@chakra-ui/react';
+
+const ProfilOldal: React.FC = () => {
   return (
-    <div style={{ padding: "40px", fontSize: "28px", color: "black" }}>
-      Profil oldal működik
-    </div>
+    <Box
+      minH="100vh"
+      w="100vw"
+      bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
+      position="relative"
+      overflow="hidden"
+      color="white"
+      pt={{ base: 24, md: 32 }}
+    >
+      <Center minH="100vh" px={4}>
+        {/* IDE JÖN MAJD AZ OLDAL TARTALMA */}
+      </Center>
+    </Box>
   );
   return <div>Profil oldal</div>;
 }
