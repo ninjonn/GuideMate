@@ -17,6 +17,5 @@ const ProfilOldal: React.FC = () => {
       </Center>
     </Box>
   );
-};
-
-export default ProfilOldal;
+  return <div>Profil oldal</div>;
+}
