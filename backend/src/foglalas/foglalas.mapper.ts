@@ -34,17 +34,17 @@ export const mapCreateDtoToData = (
   veg_datum: Date | null;
 } => {
   // Tipus alapjan kotelezo mezok ellenorzese.
-  if (dto.tipus === 'repulo') {
+  if (isTravelType(dto.tipus)) {
     if (
       !dto.indulasi_hely ||
       !dto.erkezesi_hely ||
       !dto.indulasi_ido ||
       !dto.erkezesi_ido
     ) {
-      throw new BadRequestException('Hianyzo repulo adatok.');
+      throw new BadRequestException('Hianyzo utazasi adatok.');
     }
     return {
-      foglalas_tipus: 'repulo',
+      foglalas_tipus: dto.tipus,
       indulasi_hely: dto.indulasi_hely,
       erkezesi_hely: dto.erkezesi_hely,
       indulasi_ido: new Date(dto.indulasi_ido),
@@ -112,14 +112,14 @@ export const mapUpdateDtoToData = (
   // Tipus valtasnal kotelezoek a relevans mezok.
   if (typeChanged) {
     updated.foglalas_tipus = nextType;
-    if (nextType === 'repulo') {
+    if (isTravelType(nextType)) {
       if (
         !dto.indulasi_hely ||
         !dto.erkezesi_hely ||
         !dto.indulasi_ido ||
         !dto.erkezesi_ido
       ) {
-        throw new BadRequestException('Hianyzo repulo adatok.');
+        throw new BadRequestException('Hianyzo utazasi adatok.');
       }
       // Szallas mezok torlese tipus valtasnal.
       updated.hely = null;
@@ -132,7 +132,7 @@ export const mapUpdateDtoToData = (
   }
 
   // A kovetkezo tipus szerint frissitjuk a mezoket.
-  if (nextType === 'repulo') {
+  if (isTravelType(nextType)) {
     if (dto.indulasi_hely) {
       updated.indulasi_hely = dto.indulasi_hely;
     }
@@ -197,6 +197,18 @@ export const mapToListItem = (foglalas: FoglalasRecord): FoglalasListItem => {
   }
 
   // Repulo tipusnal az idopontok ISO formaban mennek vissza.
+  if (isTravelType(foglalas.foglalas_tipus)) {
+    return {
+      azonosito: foglalas.foglalas_id,
+      tipus: foglalas.foglalas_tipus as 'repulo' | 'busz' | 'vonat',
+      indulasi_hely: foglalas.indulasi_hely,
+      erkezesi_hely: foglalas.erkezesi_hely,
+      indulasi_ido: foglalas.indulasi_ido.toISOString(),
+      erkezesi_ido: foglalas.erkezesi_ido.toISOString(),
+      jaratszam: foglalas.jaratszam,
+    };
+  }
+
   return {
     azonosito: foglalas.foglalas_id,
     tipus: 'repulo',
@@ -211,4 +223,8 @@ export const mapToListItem = (foglalas: FoglalasRecord): FoglalasListItem => {
 const formatDate = (date: Date): string => {
   // YYYY-MM-DD formatumra vagjuk a datumot.
   return date.toISOString().slice(0, 10);
+};
+
+const isTravelType = (tipus: string): tipus is 'repulo' | 'busz' | 'vonat' => {
+  return tipus === 'repulo' || tipus === 'busz' || tipus === 'vonat';
 };
