@@ -1,5 +1,5 @@
-import { Link as RouterLink } from "react-router-dom";
-import React from "react";
+import React, { useState } from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
   Flex,
@@ -16,60 +16,56 @@ import {
   Center,
   ChakraProvider,
   extendTheme,
+  useToast,
 } from "@chakra-ui/react";
 import { EmailIcon, LockIcon } from "@chakra-ui/icons";
+
+import { login } from "../../features/auth/auth.api";
+import { setAuthToken } from "../../lib/api";
 
 const theme = extendTheme({
   fonts: {
     heading: `'Inter', sans-serif`,
     body: `'Inter', sans-serif`,
   },
-  styles: {
-    global: {
-      "@import":
-        "url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap')",
-      body: {
-        margin: 0,
-        padding: 0,
-        boxSizing: "border-box",
-      },
-    },
-  },
 });
 
 const LoginPage: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [jelszo, setJelszo] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+  const toast = useToast();
+
   return (
     <ChakraProvider theme={theme}>
       <Box
         minH="100vh"
-        w="100vw"
-        // Előző lépésben fixált gradiens
-        bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
-        position="relative"
-        overflow="hidden"
-        color="white"
-      >
-        <Center minH="100vh" px={4}>
-          {/* --- Login Card --- */}
-          <Box
-            // Figma méretek: W 788px, H 611px
-            w={{ base: "100%", md: "788px" }}
-            h={{ base: "auto", md: "611px" }}
-            // Padding a tartalomnak, mobilon igazodva
-            px={{ base: 6, md: 24 }}
-            py={{ base: 10, md: 0 }}
-            // Flexbox a tartalom vertikális középre igazításához a fix magasságban
-            display="flex"
-            flexDirection="column"
-            justifyContent="center"
-            alignItems="center"
-            // Figma Fill: #FFFFFF 10%
-            bg="rgba(255, 255, 255, 0.1)"
-            // Glassmorphism effektek
+      w="100vw"
+      bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
+      position="relative"
+      overflow="hidden"
+      color="white"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      py={{ base: 8, md: 12 }}
+    >
+      <Center minH="100vh" px={4} w="100%">
+        <Box
+          w={{ base: "100%", md: "788px" }}
+          h={{ base: "auto", md: "611px" }}
+          px={{ base: 6, md: 24 }}
+          py={{ base: 10, md: 0 }}
+          mt={{ base: 6, md: 10 }}
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+          bg="rgba(255, 255, 255, 0.1)"
             backdropFilter="blur(12px)"
-            // Figma Corner radius: 15px
             borderRadius="15px"
-            // Vékony keret és árnyék (Drop shadow)
             border="1px solid rgba(255, 255, 255, 0.2)"
             boxShadow="0 20px 40px rgba(0, 0, 0, 0.2)"
           >
@@ -87,6 +83,8 @@ const LoginPage: React.FC = () => {
                     <Input
                       type="email"
                       placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       variant="flushed"
                       borderBottom="1px solid rgba(255,255,255,0.5)"
                       _placeholder={{ color: "#ffffffa0" }}
@@ -95,6 +93,7 @@ const LoginPage: React.FC = () => {
                       fontSize="lg"
                       height="50px"
                       pl={10}
+                      autoComplete="email"
                     />
                   </InputGroup>
                 </FormControl>
@@ -107,6 +106,8 @@ const LoginPage: React.FC = () => {
                     <Input
                       type="password"
                       placeholder="Jelszó"
+                      value={jelszo}
+                      onChange={(e) => setJelszo(e.target.value)}
                       variant="flushed"
                       borderBottom="1px solid rgba(255,255,255,0.5)"
                       _placeholder={{ color: "#ffffffa0" }}
@@ -115,42 +116,11 @@ const LoginPage: React.FC = () => {
                       fontSize="lg"
                       height="50px"
                       pl={10}
+                      autoComplete="current-password"
                     />
                   </InputGroup>
                 </FormControl>
 
-                <Flex
-                  w="100%"
-                  justify="space-between"
-                  fontSize="sm"
-                  pt={2}
-                  align="center"
-                >
-                  <Checkbox
-                    colorScheme="blackAlpha"
-                    sx={{
-                      "[data-checked] .chakra-checkbox__control": {
-                        bg: "rgba(30, 40, 70, 0.8)",
-                        borderColor: "transparent",
-                      },
-                      ".chakra-checkbox__control": {
-                        borderColor: "whiteAlpha.600",
-                        bg: "transparent",
-                      },
-                    }}
-                  >
-                    <Text ml={1} color="whiteAlpha.900">
-                      Emlékezz rám
-                    </Text>
-                  </Checkbox>
-
-                  <Link
-                    _hover={{ textDecoration: "underline", color: "white" }}
-                    color="whiteAlpha.900"
-                  >
-                    Elfelejtett jelszó?
-                  </Link>
-                </Flex>
               </VStack>
 
               <Button
@@ -160,6 +130,7 @@ const LoginPage: React.FC = () => {
                 fontSize="xl"
                 fontWeight="600"
                 bg="#232B5C"
+                isLoading={loading}
                 _hover={{
                   filter: "brightness(1.2)",
                   transform: "scale(1.02)",
@@ -168,6 +139,40 @@ const LoginPage: React.FC = () => {
                 color="white"
                 borderRadius="lg"
                 boxShadow="0 4px 15px rgba(0,0,0,0.2)"
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+
+                    const res = await login({ email, jelszo });
+
+                    // JWT elmentése és memória token frissítése
+                    localStorage.setItem("gm_token", res.token);
+                    setAuthToken(res.token);
+                    localStorage.setItem("gm_user", JSON.stringify(res.felhasznalo));
+
+                    toast({
+                      title: "Sikeres bejelentkezés",
+                      status: "success",
+                      duration: 2000,
+                      isClosable: true,
+                    });
+
+                    navigate("/profil");
+                  } catch (err: unknown) {
+                    const message =
+                      err instanceof Error ? err.message : "Ismeretlen hiba";
+
+                    toast({
+                      title: "Bejelentkezés sikertelen",
+                      description: message,
+                      status: "error",
+                      duration: 4000,
+                      isClosable: true,
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
               >
                 Bejelentkezés
               </Button>
