@@ -12,6 +12,7 @@ import {
   useToast,
   HStack,
   Divider,
+  Icon,
 } from '@chakra-ui/react';
 import { EditIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +20,21 @@ import { useNavigate } from 'react-router-dom';
 // JAVÍTÁS ITT: 'type ProfileResponse' explicit jelölése
 import { getProfile, type ProfileResponse } from '../../features/auth/auth.api';
 import { setAuthToken } from '../../lib/api';
+
+const AvatarIcon = (props: React.ComponentProps<typeof Icon>) => (
+  <Icon
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </Icon>
+);
 
 const ProfilOldal: React.FC = () => {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -141,11 +157,12 @@ const ProfilOldal: React.FC = () => {
               <VStack spacing={3}>
                 <Avatar 
                   size="2xl" 
-                  name={profile.nev} 
+                  name="" 
                   bg="#232B5C" 
                   color="white"
                   border="2px solid rgba(255,255,255,0.6)"
                   showBorder={true}
+                  icon={<AvatarIcon boxSize={10} />}
                 />
                 <Text fontSize="2xl" fontWeight="700">
                   {profile.nev}

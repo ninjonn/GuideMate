@@ -13,9 +13,9 @@ const trimOptional = ({ value }: TransformFnParams): string | undefined =>
 export class CreateFoglalasDto {
   // Foglalas tipusa (pl. repulo, szallas).
   @IsString()
-  @IsIn(['repulo', 'szallas'])
+  @IsIn(['repulo', 'szallas', 'busz', 'vonat'])
   @Transform(trimRequired)
-  tipus: 'repulo' | 'szallas';
+  tipus: 'repulo' | 'szallas' | 'busz' | 'vonat';
 
   // Repulo: indulasi hely.
   @IsOptional()
