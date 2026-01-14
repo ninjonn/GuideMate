@@ -11,12 +11,16 @@ import {
   FormControl,
   Center,
   Icon,
+  useToast,
 } from "@chakra-ui/react";
+import type { IconProps } from "@chakra-ui/react";
 import { EmailIcon, LockIcon } from "@chakra-ui/icons";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { register } from "../../features/auth/auth.api";
 
 // Személy ikon (Figma alapján)
-const PersonIcon = (props: any) => (
+const PersonIcon = (props: IconProps) => (
   <Icon
     viewBox="0 0 24 24"
     fill="none"
@@ -32,6 +36,85 @@ const PersonIcon = (props: any) => (
 );
 
 const RegisztracioOldal: React.FC = () => {
+  const [vezeteknev, setVezeteknev] = useState("");
+  const [keresztnev, setKeresztnev] = useState("");
+  const [email, setEmail] = useState("");
+  const [jelszo, setJelszo] = useState("");
+  const [jelszo2, setJelszo2] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  const onSubmit = async () => {
+    const trimmedV = vezeteknev.trim();
+    const trimmedK = keresztnev.trim();
+    const trimmedE = email.trim();
+
+    if (!trimmedV || !trimmedK || !trimmedE || !jelszo || !jelszo2) {
+      toast({
+        title: "Hiányzó adatok",
+        description: "Kérlek tölts ki minden mezőt.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (jelszo.length < 6) {
+      toast({
+        title: "Rövid jelszó",
+        description: "A jelszónak legalább 6 karakter hosszúnak kell lennie.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (jelszo !== jelszo2) {
+      toast({
+        title: "Jelszavak nem egyeznek",
+        description: "A megadott jelszavaknak egyezniük kell.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await register({
+        vezeteknev: trimmedV,
+        keresztnev: trimmedK,
+        email: trimmedE,
+        jelszo,
+      });
+
+      toast({
+        title: "Sikeres regisztráció",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+      });
+
+      navigate("/bejelentkezes");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Regisztráció sikertelen",
+        description: message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box
       minH="100vh"
@@ -40,15 +123,19 @@ const RegisztracioOldal: React.FC = () => {
       position="relative"
       overflow="hidden"
       color="white"
-      pt={{ base: 24, md: 32 }} // hogy a Navigációs sáv alatt legyen hely
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      py={{ base: 8, md: 12 }} // legyen szellősebb, de a navbar ne takarja
     >
-      <Center minH="100vh" px={4}>
+      <Center minH="100vh" px={4} w="100%">
 
         {/* --- REGISZTRÁCIÓS KÁRTYA --- */}
         <Box
           w={{ base: "100%", md: "788px" }}
           px={{ base: 6, md: 20 }}
           py={10}
+          mt={{ base: 4, md: 6 }}
           bg="rgba(255, 255, 255, 0.1)"
           backdropFilter="blur(12px)"
           borderRadius="15px"
@@ -72,6 +159,8 @@ const RegisztracioOldal: React.FC = () => {
                   <Input
                     type="text"
                     placeholder="Vezetéknév"
+                    value={vezeteknev}
+                    onChange={(e) => setVezeteknev(e.target.value)}
                     variant="flushed"
                     borderBottom="1px solid rgba(255,255,255,0.5)"
                     _placeholder={{ color: "#ffffffa0" }}
@@ -93,6 +182,8 @@ const RegisztracioOldal: React.FC = () => {
                   <Input
                     type="text"
                     placeholder="Keresztnév"
+                    value={keresztnev}
+                    onChange={(e) => setKeresztnev(e.target.value)}
                     variant="flushed"
                     borderBottom="1px solid rgba(255,255,255,0.5)"
                     _placeholder={{ color: "#ffffffa0" }}
@@ -114,6 +205,8 @@ const RegisztracioOldal: React.FC = () => {
                   <Input
                     type="email"
                     placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     variant="flushed"
                     borderBottom="1px solid rgba(255,255,255,0.5)"
                     _placeholder={{ color: "#ffffffa0" }}
@@ -135,6 +228,8 @@ const RegisztracioOldal: React.FC = () => {
                   <Input
                     type="password"
                     placeholder="Jelszó"
+                    value={jelszo}
+                    onChange={(e) => setJelszo(e.target.value)}
                     variant="flushed"
                     borderBottom="1px solid rgba(255,255,255,0.5)"
                     _placeholder={{ color: "#ffffffa0" }}
@@ -156,6 +251,8 @@ const RegisztracioOldal: React.FC = () => {
                   <Input
                     type="password"
                     placeholder="Jelszó megerősítése"
+                    value={jelszo2}
+                    onChange={(e) => setJelszo2(e.target.value)}
                     variant="flushed"
                     borderBottom="1px solid rgba(255,255,255,0.5)"
                     _placeholder={{ color: "#ffffffa0" }}
@@ -178,6 +275,7 @@ const RegisztracioOldal: React.FC = () => {
               fontSize="xl"
               fontWeight="600"
               bg="#232B5C"
+              isLoading={loading}
               _hover={{
                 filter: "brightness(1.2)",
                 transform: "scale(1.02)",
@@ -186,6 +284,7 @@ const RegisztracioOldal: React.FC = () => {
               color="white"
               borderRadius="lg"
               boxShadow="0 4px 15px rgba(0,0,0,0.2)"
+              onClick={onSubmit}
             >
               Regisztráció
             </Button>
