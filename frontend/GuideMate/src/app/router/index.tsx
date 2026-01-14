@@ -88,16 +88,16 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "*",
-    element: <NemTalalhato />,
-  },
-  {
-    path: "/jegykovetes/uj-jegy",
+    path: "/uj-jegy",
     element: (
       <>
         <NavigaciosSav />
         <UjJegyForm />
       </>
     ),
+  },
+  {
+    path: "*",
+    element: <NemTalalhato />,
   },
 ]);
