@@ -11,6 +11,28 @@ export type FoglalasRepuloItem = {
   jaratszam: string | null;
 };
 
+// Busz tipusu foglalas valasz forma.
+export type FoglalasBuszItem = {
+  azonosito: number;
+  tipus: 'busz';
+  indulasi_hely: string;
+  erkezesi_hely: string;
+  indulasi_ido: string;
+  erkezesi_ido: string;
+  jaratszam: string | null;
+};
+
+// Vonat tipusu foglalas valasz forma.
+export type FoglalasVonatItem = {
+  azonosito: number;
+  tipus: 'vonat';
+  indulasi_hely: string;
+  erkezesi_hely: string;
+  indulasi_ido: string;
+  erkezesi_ido: string;
+  jaratszam: string | null;
+};
+
 // Szallas tipusu foglalas valasz forma.
 export type FoglalasSzallasItem = {
   azonosito: number;
@@ -22,7 +44,11 @@ export type FoglalasSzallasItem = {
 };
 
 // Lista tetele a ket formatum kozul az egyik.
-export type FoglalasListItem = FoglalasRepuloItem | FoglalasSzallasItem;
+export type FoglalasListItem =
+  | FoglalasRepuloItem
+  | FoglalasBuszItem
+  | FoglalasVonatItem
+  | FoglalasSzallasItem;
 
 // Lista valasz, osszes elem szammal.
 export type FoglalasListResponse = {
@@ -35,12 +61,12 @@ export type FoglalasCreateResponse = {
   azonosito: number;
   utazas_id: number;
   letrehozas_datuma: string;
-} & (FoglalasRepuloItem | FoglalasSzallasItem);
+} & (FoglalasRepuloItem | FoglalasBuszItem | FoglalasVonatItem | FoglalasSzallasItem);
 
 // Frissites valasz, sikeres jelzessel.
 export type FoglalasUpdateResponse = {
   sikeres: boolean;
-} & (FoglalasRepuloItem | FoglalasSzallasItem);
+} & (FoglalasRepuloItem | FoglalasBuszItem | FoglalasVonatItem | FoglalasSzallasItem);
 
 // Torles valasz, visszajelzessel.
 export type FoglalasDeleteResponse = {
