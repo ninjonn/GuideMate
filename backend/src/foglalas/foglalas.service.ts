@@ -23,26 +23,13 @@ import {
 export class FoglalasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Foglalasok listazasa egy utazashoz.
-  async listForTrip(
-    userId: number,
-    utazasId: number,
-  ): Promise<FoglalasListResponse> {
-    // Csak a resztvevok lathatjak.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
-
-    // Idorendi lista, hogy konzisztens legyen a kliens oldal.
+  // Foglalasok listazasa a bejelentkezett felhasznalonak.
+  async listForUser(userId: number): Promise<FoglalasListResponse> {
     const foglalasok = await this.prisma.foglalas.findMany({
-      where: { utazas_id: utazasId },
+      where: { felhasznalo_id: userId },
       orderBy: { indulasi_ido: 'asc' },
     });
 
-    // DB rekordok atalakitasa az API formatumra.
     const items = foglalasok.map((foglalas) => mapToListItem(foglalas));
 
     return {
@@ -51,33 +38,21 @@ export class FoglalasService {
     };
   }
 
-  // Uj foglalas letrehozasa egy utazashoz.
-  async createForTrip(
+  // Uj foglalas letrehozasa a felhasznalohoz kotve.
+  async createForUser(
     userId: number,
-    utazasId: number,
     dto: CreateFoglalasDto,
   ): Promise<FoglalasCreateResponse> {
-    // Csak a resztvevok hozhatnak letre foglalast.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
-
-    // A DTO-bol DB-barat adatokat keszitunk.
     const data = mapCreateDtoToData(dto);
     const created = await this.prisma.foglalas.create({
       data: {
-        utazas_id: utazasId,
+        felhasznalo_id: userId,
         ...data,
       },
     });
 
-    // Visszaadjuk az uj rekordot az API formatumban.
     const response = mapToListItem(created);
     return {
-      utazas_id: utazasId,
       letrehozas_datuma: created.letrehozva.toISOString(),
       ...response,
     };
@@ -97,13 +72,7 @@ export class FoglalasService {
       throw new NotFoundException('Foglalas nem talalhato.');
     }
 
-    // Jog ellenorzes az utazas resztvevoi alapjan.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: existing.utazas_id, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
+    this.ensureFoglalasAccess(userId, existing);
 
     // Csak a megadott mezoket frissitjuk.
     const updatedData = mapUpdateDtoToData(existing, dto);
@@ -136,13 +105,7 @@ export class FoglalasService {
       throw new NotFoundException('Foglalas nem talalhato.');
     }
 
-    // Jog ellenorzes az utazas resztvevoi alapjan.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: existing.utazas_id, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
+    this.ensureFoglalasAccess(userId, existing);
 
     // Egyszeru torles, nincs kapcsolt tabla itt.
     await this.prisma.foglalas.delete({ where: { foglalas_id: foglalasId } });
@@ -152,5 +115,14 @@ export class FoglalasService {
       uzenet: 'Foglalas sikeresen torolve',
       torolt_foglalas_id: foglalasId,
     };
+  }
+
+  private ensureFoglalasAccess(
+    userId: number,
+    foglalas: { felhasznalo_id: number | null },
+  ): void {
+    if (!foglalas.felhasznalo_id || foglalas.felhasznalo_id !== userId) {
+      throw new ForbiddenException('Nincs jogosultsag a foglalashoz.');
+    }
   }
 }

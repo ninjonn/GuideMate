@@ -29,7 +29,7 @@ export type UtazasListResponse = {
   oldalak_szama: number;
 };
 
-// Reszletes utazas nezet, programokkal es foglalasokkal.
+// Reszletes utazas nezet, programokkal.
 export type UtazasDetailResponse = {
   azonosito: number;
   cim: string;
@@ -38,7 +38,6 @@ export type UtazasDetailResponse = {
   veg_datum: string;
   letrehozas_datuma: string;
   programok: { azonosito: number; nev: string; nap_datum: string | null }[];
-  foglalasok: { azonosito: number; tipus: string; jaratszam: string | null }[];
 };
 
 // Letrehozas utani valasz, alap mezokkel.
@@ -123,7 +122,6 @@ export class UtazasService {
           _count: {
             select: {
               programok: true,
-              foglalasok: true,
               listak: true,
             },
           },
@@ -139,7 +137,7 @@ export class UtazasService {
       kezdo_datum: this.formatDate(row.kezdo_datum),
       veg_datum: this.formatDate(row.veg_datum),
       programok_szama: row._count.programok,
-      jegyek_szama: row._count.foglalasok,
+      jegyek_szama: 0,
       ellenorzolistak_szama: row._count.listak,
     }));
 
@@ -157,15 +155,12 @@ export class UtazasService {
     userId: number,
     utazasId: number,
   ): Promise<UtazasDetailResponse> {
-    // Az utazas alapadatai, programokkal es foglalasokkal.
+    // Az utazas alapadatai, programokkal.
     const utazas = await this.prisma.utazas.findUnique({
       where: { utazas_id: utazasId },
       include: {
         programok: {
           select: { program_id: true, program_nev: true, nap_datum: true },
-        },
-        foglalasok: {
-          select: { foglalas_id: true, foglalas_tipus: true, jaratszam: true },
         },
       },
     });
@@ -201,11 +196,6 @@ export class UtazasService {
         nap_datum: program.nap_datum
           ? this.formatDate(program.nap_datum)
           : null,
-      })),
-      foglalasok: utazas.foglalasok.map((foglalas) => ({
-        azonosito: foglalas.foglalas_id,
-        tipus: foglalas.foglalas_tipus,
-        jaratszam: foglalas.jaratszam,
       })),
     };
   }
@@ -343,7 +333,6 @@ export class UtazasService {
 
       // Kozvetlen kapcsolatok torlese.
       await tx.program.deleteMany({ where: { utazas_id: utazasId } });
-      await tx.foglalas.deleteMany({ where: { utazas_id: utazasId } });
       await tx.ellenorzoLista.deleteMany({ where: { utazas_id: utazasId } });
       await tx.utazasResztvevo.deleteMany({ where: { utazas_id: utazasId } });
       await tx.utazas.delete({ where: { utazas_id: utazasId } });
