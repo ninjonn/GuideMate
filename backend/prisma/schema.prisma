@@ -21,6 +21,7 @@ model Felhasznalo {
   letrehozva       DateTime          @default(now())
   utazasResztvevok UtazasResztvevo[]
   tokenek          UserAccessToken[]
+  foglalasok       Foglalas[]
 }
 
 model UserAccessToken {
@@ -56,7 +57,6 @@ model Utazas {
 
   resztvevok UtazasResztvevo[]
   programok  Program[]
-  foglalasok Foglalas[]
   listak     EllenorzoLista[]
 }
 
@@ -109,7 +109,7 @@ model ProgramLatnivalo {
 
 model Foglalas {
   foglalas_id    Int      @id @default(autoincrement())
-  utazas_id      Int
+  felhasznalo_id Int?
   foglalas_tipus String
   indulasi_hely  String
   erkezesi_hely  String
@@ -122,7 +122,7 @@ model Foglalas {
   kezdo_datum     DateTime?
   veg_datum       DateTime?
 
-  utazas Utazas @relation(fields: [utazas_id], references: [utazas_id])
+  felhasznalo Felhasznalo? @relation(fields: [felhasznalo_id], references: [felhasznalo_id])
 }
 
 model EllenorzoLista {

@@ -40,27 +40,21 @@ export class FoglalasController {
     return authed.sub;
   }
 
-  @Get('utazasok/:utazasId/foglalasok')
-  // Foglalasok listazasa egy adott utazashoz.
-  list(
-    @Req() req: AuthedRequest,
-    @Param('utazasId', ParseIntPipe) utazasId: number,
-  ): Promise<FoglalasListResponse> {
-    // Csak resztvevo kaphat listat.
+  @Get('foglalasok')
+  // Foglalasok listazasa a bejelentkezett felhasznalonak.
+  listForUser(@Req() req: AuthedRequest): Promise<FoglalasListResponse> {
     const userId = this.getUserId(req);
-    return this.foglalasService.listForTrip(userId, utazasId);
+    return this.foglalasService.listForUser(userId);
   }
 
-  @Post('utazasok/:utazasId/foglalasok')
-  // Uj foglalas letrehozasa egy utazashoz.
-  create(
+  @Post('foglalasok')
+  // Uj foglalas letrehozasa a felhasznalohoz kotve.
+  createForUser(
     @Req() req: AuthedRequest,
-    @Param('utazasId', ParseIntPipe) utazasId: number,
     @Body() dto: CreateFoglalasDto,
   ): Promise<FoglalasCreateResponse> {
-    // A DTO validalt, a service menti a rekordot.
     const userId = this.getUserId(req);
-    return this.foglalasService.createForTrip(userId, utazasId, dto);
+    return this.foglalasService.createForUser(userId, dto);
   }
 
   @Put('foglalasok/:id')
