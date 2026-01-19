@@ -54,6 +54,7 @@ model Utazas {
   leiras      String?
   kezdo_datum DateTime
   veg_datum   DateTime
+  letrehozva  DateTime @default(now())
 
   resztvevok UtazasResztvevo[]
   programok  Program[]

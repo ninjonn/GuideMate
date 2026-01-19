@@ -179,8 +179,8 @@ export class UtazasService {
       throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
     }
 
-    // A letrehozas_datuma egy egyszeru referencia datum.
-    const letrehozva = participant.csatlakozas_ideje ?? utazas.kezdo_datum;
+    // A letrehozas_datuma az utazas letrehozas ideje.
+    const letrehozva = utazas.letrehozva;
 
     // Valasz formatum osszerakasa.
     return {
@@ -229,7 +229,7 @@ export class UtazasService {
       leiras: created.leiras,
       kezdo_datum: this.formatDate(created.kezdo_datum),
       veg_datum: this.formatDate(created.veg_datum),
-      letrehozas_datuma: now.toISOString(),
+      letrehozas_datuma: created.letrehozva.toISOString(),
     };
   }
 
