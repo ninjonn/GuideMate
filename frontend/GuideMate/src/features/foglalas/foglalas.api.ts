@@ -42,7 +42,7 @@ export type CreateSzallasDto = {
 
 export type CreateFoglalasDto = CreateTravelDto | CreateSzallasDto;
 
-// Update-nél tipikusan részleges frissítés:
+
 export type UpdateFoglalasDto = Partial<CreateFoglalasDto> & { tipus: FoglalasTipus };
 
 export async function listFoglalasok(utazasId: number): Promise<Foglalas[]> {

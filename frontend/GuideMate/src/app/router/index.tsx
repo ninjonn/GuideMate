@@ -12,6 +12,9 @@ import ProfilOldal from "../../oldalak/ProfilOldal/ProfilOldal";
 import AdminOldal from "../../oldalak/AdminOldal/AdminOldal";
 import NemTalalhato from "../../oldalak/NemTalalhato/NemTalalhato";
 import UjJegyForm from "../../oldalak/JegyKovetesOldal/UjJegyForm";
+import UjUtHozzaadasaOldal from "../../oldalak/UtazastervezoOldal/UjUtHozzaadasaOldal";
+import UtazasSzerkeszteseOldal from "../../oldalak/UtazastervezoOldal/UtazasSzerkeszteseOldal";
+import UtReszletekOldal from "../../oldalak/UtReszletekOldal/UtReszletekOldal";
 
 // ROUTER EXPORTJA
 export const router = createBrowserRouter([
@@ -61,6 +64,15 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/utazas/:id",
+    element: (
+      <>
+        <NavigaciosSav />
+        <UtReszletekOldal />
+      </>
+    ),
+  },
+  {
     path: "/jegykovetes",
     element: (
       <>
@@ -93,6 +105,24 @@ export const router = createBrowserRouter([
       <>
         <NavigaciosSav />
         <UjJegyForm />
+      </>
+    ),
+  },
+  {
+    path: "/uj-ut-hozzaadasa",
+    element: (
+      <>
+        <NavigaciosSav />
+        <UjUtHozzaadasaOldal />
+      </>
+    ),
+  },
+  {
+    path: "/utazas-szerkesztese/:id",
+    element: (
+      <>
+        <NavigaciosSav />
+        <UtazasSzerkeszteseOldal />
       </>
     ),
   },
