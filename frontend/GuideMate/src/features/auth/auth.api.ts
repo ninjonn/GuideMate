@@ -1,4 +1,3 @@
-// src/features/auth/auth.api.ts
 import { apiFetch } from "../../lib/api";
 
 export type LoginRequest = {
@@ -56,6 +55,6 @@ export function register(dto: RegisterRequest) {
 
 
 export const getProfile = async (): Promise<ProfileResponse> => {
-  // Auth-olt profil végpont mindig az /api prefixel
+  // a profilhoz csatolja a tokent a true miatt
   return apiFetch<ProfileResponse>("/api/felhasznalok/profil", {}, true);
 };
