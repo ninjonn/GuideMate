@@ -1,5 +1,3 @@
-// src/lib/api.ts
-
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 let authToken: string | null = null;
@@ -50,7 +48,7 @@ export async function apiFetch<T>(
   try {
     data = await res.json();
   } catch {
-    // üres vagy nem JSON válasz
+    // üres
   }
 
   if (!res.ok) {

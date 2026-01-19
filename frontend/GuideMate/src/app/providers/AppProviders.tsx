@@ -16,7 +16,7 @@ const theme = extendTheme({
 
 export default function AppProviders({ children }: Props) {
   useEffect(() => {
-    // Ha volt korábbi login, töltsük be a token-t az API kliensbe.
+    // ha volt logion betolti az a tokent az apiba
     const token = localStorage.getItem("gm_token");
     if (token) {
       setAuthToken(token);
