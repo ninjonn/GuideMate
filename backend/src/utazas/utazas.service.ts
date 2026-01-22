@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
 import { UtazasQueryDto } from './dto/utazas-query.dto';
 import { CreateUtazasDto } from './dto/create-utazas.dto';
@@ -37,8 +38,31 @@ export type UtazasDetailResponse = {
   kezdo_datum: string;
   veg_datum: string;
   letrehozas_datuma: string;
-  programok: { azonosito: number; nev: string; nap_datum: string | null }[];
+  programok: {
+    azonosito: number;
+    nev: string;
+    leiras: string | null;
+    nap_datum: string;
+    kezdo_ido: string;
+    veg_ido: string;
+  }[];
 };
+
+// Utazas rekord program reszletekkel, a listazas tipizalasahoz.
+type UtazasWithProgramok = Prisma.UtazasGetPayload<{
+  include: {
+    programok: {
+      select: {
+        program_id: true;
+        program_nev: true;
+        leiras: true;
+        nap_datum: true;
+        kezdo_ido: true;
+        veg_ido: true;
+      };
+    };
+  };
+}>;
 
 // Letrehozas utani valasz, alap mezokkel.
 export type UtazasCreateResponse = {
@@ -156,14 +180,21 @@ export class UtazasService {
     utazasId: number,
   ): Promise<UtazasDetailResponse> {
     // Az utazas alapadatai, programokkal.
-    const utazas = await this.prisma.utazas.findUnique({
+    const utazas = (await this.prisma.utazas.findUnique({
       where: { utazas_id: utazasId },
       include: {
         programok: {
-          select: { program_id: true, program_nev: true, nap_datum: true },
+          select: {
+            program_id: true,
+            program_nev: true,
+            leiras: true,
+            nap_datum: true,
+            kezdo_ido: true,
+            veg_ido: true,
+          },
         },
       },
-    });
+    })) as UtazasWithProgramok | null;
 
     // Nincs ilyen utazas.
     if (!utazas) {
@@ -193,9 +224,10 @@ export class UtazasService {
       programok: utazas.programok.map((program) => ({
         azonosito: program.program_id,
         nev: program.program_nev,
-        nap_datum: program.nap_datum
-          ? this.formatDate(program.nap_datum)
-          : null,
+        leiras: program.leiras,
+        nap_datum: this.formatDate(program.nap_datum),
+        kezdo_ido: program.kezdo_ido,
+        veg_ido: program.veg_ido,
       })),
     };
   }
