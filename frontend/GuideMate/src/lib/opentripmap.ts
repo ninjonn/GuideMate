@@ -2,7 +2,6 @@
 
 // API KULCSOK
 const GEOAPIFY_API_KEY = "589fb45a2e214ff38069dffee50a6d77";
-const PEXELS_API_KEY = "wEFsExQusKxKRu9Q0iIwuVIZ3sWfa9AQxQrBkMknaCn1WwLhVptoUbLL";
 const MAPBOX_API_KEY = "pk.eyJ1IjoidmlyYWdiZW5lZGVrMDYiLCJhIjoiY21rcDVuazBpMGQ3bTNkczkyaXgwcWtsaCJ9.8U__-HsFg4GAqf0Ispqo2g";
 
 export type Place = {
@@ -23,6 +22,17 @@ export type SearchCategory = {
   label: string;
   categories: string;
   imageCategory: string;
+};
+
+export type PlacesOptions = {
+  limit?: number;
+  offset?: number;
+  radius?: number;
+};
+
+export type PlacesResult = {
+  items: Place[];
+  hasMore: boolean;
 };
 
 // 4 KATEGÓRIA - NÉPSZERŰ, MÚZEUM, PARK, ÉTTEREM
@@ -79,8 +89,29 @@ export async function getCoordinates(cityName: string) {
       throw new Error("Hely nem található");
     }
     
-    console.log(`✅ Koordináták: ${data[0].lat}, ${data[0].lon}`);
-    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    const item = data[0];
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    const bbox = Array.isArray(item.boundingbox) ? item.boundingbox : null;
+    if (bbox && bbox.length === 4) {
+      const south = parseFloat(bbox[0]);
+      const north = parseFloat(bbox[1]);
+      const west = parseFloat(bbox[2]);
+      const east = parseFloat(bbox[3]);
+      if (
+        !Number.isNaN(south) &&
+        !Number.isNaN(north) &&
+        !Number.isNaN(west) &&
+        !Number.isNaN(east)
+      ) {
+        const centerLat = (south + north) / 2;
+        const centerLon = (west + east) / 2;
+        console.log(`✅ Koordináták (bbox közép): ${centerLat}, ${centerLon}`);
+        return { lat: centerLat, lon: centerLon };
+      }
+    }
+    console.log(`✅ Koordináták: ${lat}, ${lon}`);
+    return { lat, lon };
   } catch (error) {
     console.error("❌ Koordináta keresés hiba:", error);
     throw error;
@@ -139,7 +170,7 @@ export async function searchAndFilterPlaces(
           lat: parseFloat(foundPlace.lat)
         },
         address: foundPlace.display_name,
-        image: `https://source.unsplash.com/400x300/?${encodeURIComponent(placeName)}&sig=1`
+        image: undefined,
       };
       return [singlePlace];
     }
@@ -159,7 +190,7 @@ export async function searchAndFilterPlaces(
           lat: parseFloat(foundPlace.lat)
         },
         address: foundPlace.display_name,
-        image: `https://source.unsplash.com/400x300/?${encodeURIComponent(placeName)}&sig=1`
+        image: undefined,
       };
       return [singlePlace];
     }
@@ -176,82 +207,57 @@ export async function searchAndFilterPlaces(
     // Ha nincs szűrt eredmény, adjuk vissza az összes találatot
     const featuresToUse = filteredFeatures.length > 0 ? filteredFeatures : data.features.slice(0, 10);
     
-    // Párhuzamos kép lekérések
-    const placesWithImages = await Promise.all(
-      featuresToUse.map(async (feature: any, index: number) => {
+    const places = featuresToUse
+      .map((feature: any) => {
         const props = feature.properties;
         const name = props.name || "Névtelen";
         const lon = feature.geometry.coordinates[0];
         const lat = feature.geometry.coordinates[1];
         const address = props.formatted || "";
         
-        const image = `https://source.unsplash.com/400x300/?${encodeURIComponent(name)}&sig=${index}`;
-        
         return {
           xid: `geoapify-${props.place_id || Math.random()}`,
-          name: name,
+          name,
           rate: 1,
           kinds: props.type || "place",
           point: { lon, lat },
           address,
-          image
+          image: undefined,
         };
       })
-    );
-    
-    const places = placesWithImages.filter((p) => p.name && p.name !== "Névtelen");
+      .filter((p: any) => p.name && p.name !== "Névtelen");
     
     console.log(`✅ Végleges lista: ${places.length}`);
     return places;
     
   } catch (error) {
     console.error("❌ Hely keresés hiba:", error);
-    throw error;
-  }
-}
-
-// Kép keresés Pexels API-val
-async function getPexelsImage(query: string): Promise<string | undefined> {
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-      {
-        headers: {
-          'Authorization': PEXELS_API_KEY
-        }
-      }
-    );
-    
-    if (!res.ok) {
-      console.warn(`⚠️ Pexels API hiba: ${res.status}`);
-      return undefined;
-    }
-    
-    const data = await res.json();
-    
-    if (data.photos && data.photos.length > 0) {
-      return data.photos[0].src.medium;
-    }
-    
-    return undefined;
-  } catch (error) {
-    console.error("❌ Pexels kép lekérés hiba:", error);
-    return undefined;
+    // Ha valami balul sül el, inkább térjünk vissza üres listával, hogy a városi lista tudjon futni.
+    return [];
   }
 }
 
 // 2. Helyek (Geoapify API + Pexels képek)
-export async function getPlaces(lat: number, lon: number, categoryId: string = "interesting_places") {
+export async function getPlaces(
+  lat: number,
+  lon: number,
+  categoryId: string = "interesting_places",
+  options: PlacesOptions = {}
+): Promise<PlacesResult> {
   
   const category = SEARCH_CATEGORIES.find(c => c.id === categoryId);
   if (!category) {
     console.error("❌ Ismeretlen kategória:", categoryId);
-    return [];
+    return { items: [], hasMore: false };
   }
 
   console.log(`🔍 Helyek keresése: ${category.label} (${lat}, ${lon})`);
+
+  const limit = options.limit ?? 30;
+  const offset = options.offset ?? 0;
+  const radius = options.radius ?? 5000;
   
-  const url = `https://api.geoapify.com/v2/places?categories=${category.categories}&filter=circle:${lon},${lat},5000&limit=50&apiKey=${GEOAPIFY_API_KEY}`;
+  const url = `https://api.geoapify.com/v2/places?categories=${category.categories}&filter=circle:${lon},${lat},${radius}&limit=${limit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
   
   console.log("📡 Geoapify API hívás...");
   
@@ -272,50 +278,40 @@ export async function getPlaces(lat: number, lon: number, categoryId: string = "
     
     if (!data.features || data.features.length === 0) {
       console.warn("⚠️ Nincs találat");
-      return [];
+      return { items: [], hasMore: false };
     }
-    
-    // Párhuzamos kép lekérések
-    const placesWithImages = await Promise.all(
-      data.features
-        .slice(0, 50)
-        .map(async (feature: any, index: number) => {
-          const props = feature.properties;
-          const name = props.name || props.street || props.address_line1 || "Névtelen";
-          const lon = feature.geometry.coordinates[0];
-          const lat = feature.geometry.coordinates[1];
-          const address = props.formatted || props.address_line2;
-          
-          let image = undefined;
-          
-          if (index < 10 && name && name !== "Névtelen") {
-            image = await getPexelsImage(`${name} ${category.imageCategory}`);
-          }
-          
-          if (!image) {
-            image = `https://source.unsplash.com/400x300/?${encodeURIComponent(category.imageCategory)}&sig=${index}`;
-          }
-          
-          return {
-            xid: `geoapify-${props.place_id || Math.random()}`,
-            name: name,
-            rate: 1,
-            kinds: category.label,
-            point: { lon, lat },
-            address,
-            image
-          };
-        })
-    );
-    
-    const places = placesWithImages.filter((p) => p.name && p.name !== "Névtelen");
-    
+
+    const rawCount = Array.isArray(data.features) ? data.features.length : 0;
+    const places = data.features
+      .slice(0, limit)
+      .map((feature: any) => {
+        const props = feature.properties;
+        const name = props.name || props.street || props.address_line1 || "Névtelen";
+        const lon = feature.geometry.coordinates[0];
+        const lat = feature.geometry.coordinates[1];
+        const address = props.formatted || props.address_line2;
+        
+        return {
+          xid: `geoapify-${props.place_id || Math.random()}`,
+          name,
+          rate: 1,
+          kinds: category.label,
+          point: { lon, lat },
+          address,
+          image: undefined,
+        };
+      })
+      .filter((p: any) => p.name && p.name !== "Névtelen");
+
     console.log(`✅ Szűrt találatok: ${places.length}`);
-    return places;
+    return {
+      items: places,
+      hasMore: rawCount >= limit,
+    };
     
   } catch (error) {
     console.error("❌ Geoapify API hiba:", error);
-    return [];
+    return { items: [], hasMore: false };
   }
 }
 
