@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Input,
@@ -17,7 +17,7 @@ import {
   FormLabel,
 } from '@chakra-ui/react';
 import { SearchIcon, TimeIcon } from '@chakra-ui/icons';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -42,6 +42,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+const defaultIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+  shadowAnchor: [12, 41],
+});
+
+const selectedIcon = L.icon({
+  iconUrl:
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5 0 22.1 12.5 41 12.5 41S25 22.1 25 12.5C25 5.6 19.4 0 12.5 0z" fill="%23232b5c"/><circle cx="12.5" cy="12.5" r="5.5" fill="%23fff"/></svg>',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: markerShadow,
+  shadowSize: [41, 41],
+  shadowAnchor: [12, 41],
+});
+
 const glassPanelStyle = {
   bg: "rgba(255, 255, 255, 0.6)",
   backdropFilter: "blur(12px)",
@@ -50,89 +72,217 @@ const glassPanelStyle = {
   borderRadius: "20px",
 };
 
-function MapUpdater({ center }: { center: [number, number] }) {
+function MapUpdater({
+  center,
+  shouldFlyRef,
+}: {
+  center: [number, number];
+  shouldFlyRef: React.MutableRefObject<boolean>;
+}) {
   const map = useMap();
   useEffect(() => {
+    if (!shouldFlyRef.current) return;
     map.flyTo(center, 13);
-  }, [center, map]);
+    shouldFlyRef.current = false;
+  }, [center, map, shouldFlyRef]);
+  return null;
+}
+
+function MapMoveHandler({
+  onMoveEnd,
+  suppressRef,
+}: {
+  onMoveEnd: (center: [number, number]) => void;
+  suppressRef: React.MutableRefObject<boolean>;
+}) {
+  useMapEvents({
+    moveend: (event) => {
+      if (suppressRef.current) {
+        suppressRef.current = false;
+        return;
+      }
+      const center = event.target.getCenter();
+      onMoveEnd([center.lat, center.lng]);
+    },
+  });
   return null;
 }
 
 const TerkepOldal: React.FC = () => {
   const toast = useToast();
   
-  const [searchQuery, setSearchQuery] = useState("Párizs");
+  const [searchQuery, setSearchQuery] = useState("");
   const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("interesting_places");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [mode, setMode] = useState<'area' | 'specific'>('area');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const shouldFlyRef = useRef(false);
+  const suppressNextMoveRef = useRef(false);
+  const LIMIT = 30;
+  const RADIUS = 8000;
 
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
 
-  // KERESÉS - intelligent (város vagy specifikus)
+  const flyToCenter = (center: [number, number]) => {
+    shouldFlyRef.current = true;
+    suppressNextMoveRef.current = true;
+    setMapCenter(center);
+  };
+
+  const fetchPlaces = async (
+    center: [number, number],
+    categoryId: string,
+    nextOffset = 0,
+    append = false
+  ) => {
+    try {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoadingPlaces(true);
+      }
+      const result = await getPlaces(center[0], center[1], categoryId, {
+        limit: LIMIT,
+        offset: nextOffset,
+        radius: RADIUS,
+      });
+      const normalized = Array.isArray(result.items) ? result.items : [];
+
+      setPlaces((prev) => {
+        const base = append ? prev : [];
+        const existing = new Set(base.map((p) => p.xid));
+        const merged = [...base];
+        normalized.forEach((item) => {
+          if (!existing.has(item.xid)) {
+            existing.add(item.xid);
+            merged.push(item);
+          }
+        });
+        return merged;
+      });
+
+      setOffset(nextOffset);
+      setHasMore(result.hasMore);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Ismeretlen hiba";
+      toast({ title: "Hiba", description: msg, status: "error" });
+    } finally {
+      setLoadingPlaces(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // KERESÉS - intelligens (specifikus hely először, különben város + lista)
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast({ title: "Hiba", description: "Írj be valamit!", status: "error" });
       return;
     }
 
-    // Előbb próbáljuk meg VÁROS KERESÉSKÉNT
+    // 1) Geokód: város vagy általános koordináta a keresőkifejezésre
+    let coords: { lat: number; lon: number } | null = null;
     try {
-      const coords = await getCoordinates(searchQuery);
-      setMapCenter([coords.lat, coords.lon]);
-      
-      // VÁROS ESETÉN: Népszerű kategória helyeit keressük
-      const items = await getPlaces(coords.lat, coords.lon, selectedCategory);
-      setPlaces(items);
-      
-      toast({ 
-        title: "✅ Város megtalálva", 
-        description: `${items.length} hely található!`, 
-        status: "success" 
-      });
-      return;
+      coords = await getCoordinates(searchQuery);
     } catch (error) {
-      // Ha város keresés nem működött, próbáljuk specifikus helyként
-      console.log("Város keresés nem sikerült, próbálom specifikus helyként...");
+      console.warn("Geokód sikertelen, specifikus hely keresés nélkülözheti a koordinátát", error);
     }
 
-    // Ha VÁROS keresés nem sikerült → SPECIFIKUS HELY
-    try {
-      const specificResults = await searchAndFilterPlaces(searchQuery, mapCenter[0], mapCenter[1]);
-      if (specificResults.length > 0) {
-        setMapCenter([specificResults[0].point.lat, specificResults[0].point.lon]);
-        setPlaces(specificResults);
-        toast({ 
-          title: "✅ Hely megtalálva", 
-          description: `${specificResults.length} találat`, 
-          status: "success" 
+    // 2) Specifikus hely keresése (pl. Louvre, Trófea étterem) csak ha van koordináta és több szavas kifejezés
+    const tokens = searchQuery.trim().split(/\s+/);
+    const isMultiWord = tokens.length > 1;
+    if (coords && isMultiWord) {
+      try {
+        const specificResults = await searchAndFilterPlaces(searchQuery, coords.lat, coords.lon);
+        const queryLower = searchQuery.trim().toLowerCase();
+        const isExactCityMatch =
+          specificResults.length === 1 && specificResults[0].name.toLowerCase() === queryLower;
+
+        if (specificResults.length > 0 && !isExactCityMatch) {
+          // Csak a legjobb találatot mutatjuk, mint a Google Maps kereső.
+          const best = specificResults[0];
+          flyToCenter([best.point.lat, best.point.lon]);
+          setPlaces([best]);
+          setMode('specific');
+          setHasMore(false);
+          setOffset(0);
+          toast({
+            title: "✅ Hely megtalálva",
+            description: `${specificResults.length} találat`,
+            status: "success",
+          });
+          return;
+        }
+      } catch (error) {
+        console.warn("Specifikus hely keresés hiba", error);
+      }
+    }
+
+    // 3) Általános városi lista a kiválasztott kategóriával
+    if (coords) {
+      try {
+        flyToCenter([coords.lat, coords.lon]);
+        setMode('area');
+        setOffset(0);
+        await fetchPlaces([coords.lat, coords.lon], selectedCategory, 0, false);
+        toast({
+          title: "✅ Város megtalálva",
+          description: `Találatok betöltve`,
+          status: "success",
         });
         return;
+      } catch (error) {
+        console.warn("Város keresés sikertelen", error);
       }
-    } catch (error) {
-      toast({ title: "❌ Hiba", description: "Nem található.", status: "error" });
     }
+
+    // 4) Ha semmi nem sikerült
+    toast({ title: "Hiba", description: "Nem található a hely/város.", status: "error" });
   };
 
   const handleFilter = async (categoryId: string) => {
     setSelectedCategory(categoryId);
-    const items = await getPlaces(mapCenter[0], mapCenter[1], categoryId);
-    setPlaces(items);
+    setMode('area');
+    setOffset(0);
+    await fetchPlaces(mapCenter, categoryId, 0, false);
     const categoryLabel = SEARCH_CATEGORIES.find(c => c.id === categoryId)?.label || categoryId;
-    toast({ title: "✅ Szűrve", description: `${items.length} ${categoryLabel}`, status: "info" });
+    toast({ title: "✅ Szűrve", description: `${categoryLabel} betöltve`, status: "info" });
   };
 
   const handleSelectPlace = (place: Place) => {
+    // Ugrás a kiválasztott pontra és az űrlap előtöltése címmel
+    flyToCenter([place.point.lat, place.point.lon]);
     setSelectedPlace(place);
+    setMode('specific');
+    setHasMore(false);
+    setOffset(0);
     setFormTitle(place.name);
-    setFormDesc(place.kinds);
+    setFormDesc(place.address ?? place.kinds);
   };
 
-  useEffect(() => {
-    handleSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const handleMapMove = (center: [number, number]) => {
+    setMapCenter(center);
+    if (mode !== 'area') {
+      setMode('area');
+    }
+    setOffset(0);
+    setSelectedPlace(null);
+    void fetchPlaces(center, selectedCategory, 0, false);
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || loadingPlaces || mode !== 'area' || !hasMore) return;
+    const nextOffset = offset + LIMIT;
+    await fetchPlaces(mapCenter, selectedCategory, nextOffset, true);
+  };
+
+  // Nincs automatikus keresés; a felhasználó indítja.
 
   return (
     <Box position="relative" w="100vw" h="100vh" overflow="hidden">
@@ -156,12 +306,14 @@ const TerkepOldal: React.FC = () => {
             url={getMapboxTileUrl("streets")}
             attribution='&copy; <a href="https://www.mapbox.com/">Mapbox</a>'
           />
-          <MapUpdater center={mapCenter} />
+          <MapUpdater center={mapCenter} shouldFlyRef={shouldFlyRef} />
+          <MapMoveHandler onMoveEnd={handleMapMove} suppressRef={suppressNextMoveRef} />
           
           {places.map((place) => (
             <Marker 
               key={place.xid} 
               position={[place.point.lat, place.point.lon]}
+              icon={selectedPlace?.xid === place.xid ? selectedIcon : defaultIcon}
               eventHandlers={{ click: () => handleSelectPlace(place) }}
             >
               <Popup>{place.name}</Popup>
@@ -221,6 +373,11 @@ const TerkepOldal: React.FC = () => {
             </Box>
 
             <VStack flex={1} overflowY="auto" spacing={0} align="stretch" p={2}>
+              {loadingPlaces && (
+                <Text fontSize="sm" color="gray.600" p={3}>
+                  Betöltés...
+                </Text>
+              )}
               {places.map((place) => (
                 <HStack 
                   key={place.xid} 
@@ -258,6 +415,17 @@ const TerkepOldal: React.FC = () => {
                   </VStack>
                 </HStack>
               ))}
+              {mode === 'area' && hasMore && (
+                <Button
+                  mt={2}
+                  size="sm"
+                  alignSelf="center"
+                  onClick={handleLoadMore}
+                  isLoading={loadingMore}
+                >
+                  További találatok
+                </Button>
+              )}
             </VStack>
           </Box>
 
