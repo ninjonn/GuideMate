@@ -56,17 +56,26 @@ export type FoglalasListResponse = {
   osszesen: number;
 };
 
-// Letrehozas valasz, utazas_id-val es letrehozas_datuma mezovel.
+// Letrehozas valasz, letrehozas_datuma mezovel.
 export type FoglalasCreateResponse = {
   azonosito: number;
-  utazas_id: number;
   letrehozas_datuma: string;
-} & (FoglalasRepuloItem | FoglalasBuszItem | FoglalasVonatItem | FoglalasSzallasItem);
+} & (
+  | FoglalasRepuloItem
+  | FoglalasBuszItem
+  | FoglalasVonatItem
+  | FoglalasSzallasItem
+);
 
 // Frissites valasz, sikeres jelzessel.
 export type FoglalasUpdateResponse = {
   sikeres: boolean;
-} & (FoglalasRepuloItem | FoglalasBuszItem | FoglalasVonatItem | FoglalasSzallasItem);
+} & (
+  | FoglalasRepuloItem
+  | FoglalasBuszItem
+  | FoglalasVonatItem
+  | FoglalasSzallasItem
+);
 
 // Torles valasz, visszajelzessel.
 export type FoglalasDeleteResponse = {

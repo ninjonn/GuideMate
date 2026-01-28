@@ -21,6 +21,7 @@ model Felhasznalo {
   letrehozva       DateTime          @default(now())
   utazasResztvevok UtazasResztvevo[]
   tokenek          UserAccessToken[]
+  foglalasok       Foglalas[]
 }
 
 model UserAccessToken {
@@ -53,10 +54,10 @@ model Utazas {
   leiras      String?
   kezdo_datum DateTime
   veg_datum   DateTime
+  letrehozva  DateTime @default(now())
 
   resztvevok UtazasResztvevo[]
   programok  Program[]
-  foglalasok Foglalas[]
   listak     EllenorzoLista[]
 }
 
@@ -85,11 +86,14 @@ model Latnivalo {
 }
 
 model Program {
-  program_id  Int       @id @default(autoincrement())
+  program_id  Int      @id @default(autoincrement())
   utazas_id   Int
   program_nev String
-  nap_datum   DateTime?
-  letrehozva  DateTime  @default(now())
+  leiras      String?
+  nap_datum   DateTime
+  kezdo_ido   String   @db.VarChar(5)
+  veg_ido     String   @db.VarChar(5)
+  letrehozva  DateTime @default(now())
 
   utazas     Utazas             @relation(fields: [utazas_id], references: [utazas_id])
   latnivalok ProgramLatnivalo[]
@@ -108,21 +112,21 @@ model ProgramLatnivalo {
 }
 
 model Foglalas {
-  foglalas_id    Int      @id @default(autoincrement())
-  utazas_id      Int
+  foglalas_id    Int       @id @default(autoincrement())
+  felhasznalo_id Int?
   foglalas_tipus String
   indulasi_hely  String
   erkezesi_hely  String
   indulasi_ido   DateTime
   erkezesi_ido   DateTime
   jaratszam      String?
-  letrehozva      DateTime @default(now())
-  hely            String?
-  cim             String?
-  kezdo_datum     DateTime?
-  veg_datum       DateTime?
+  letrehozva     DateTime  @default(now())
+  hely           String?
+  cim            String?
+  kezdo_datum    DateTime?
+  veg_datum      DateTime?
 
-  utazas Utazas @relation(fields: [utazas_id], references: [utazas_id])
+  felhasznalo Felhasznalo? @relation(fields: [felhasznalo_id], references: [felhasznalo_id])
 }
 
 model EllenorzoLista {

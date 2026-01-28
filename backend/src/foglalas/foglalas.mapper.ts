@@ -200,7 +200,7 @@ export const mapToListItem = (foglalas: FoglalasRecord): FoglalasListItem => {
   if (isTravelType(foglalas.foglalas_tipus)) {
     return {
       azonosito: foglalas.foglalas_id,
-      tipus: foglalas.foglalas_tipus as 'repulo' | 'busz' | 'vonat',
+      tipus: foglalas.foglalas_tipus,
       indulasi_hely: foglalas.indulasi_hely,
       erkezesi_hely: foglalas.erkezesi_hely,
       indulasi_ido: foglalas.indulasi_ido.toISOString(),
