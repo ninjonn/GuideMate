@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -12,9 +12,12 @@ import {
   HStack,
   Center,
 } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   createFoglalas,
+  listFoglalasok,
+  updateFoglalas,
+  type Foglalas,
   type CreateFoglalasDto,
   type FoglalasTipus,
 } from "../../features/foglalas/foglalas.api";
@@ -39,6 +42,61 @@ const glassInputStyle = {
   width: "100%",
 };
 
+const calendarFocusColor = "#7BCBFF";
+const glassCalendarInputStyle = {
+  ...glassInputStyle,
+  _focus: {
+    bg: "rgba(255, 255, 255, 0.25)",
+    borderColor: calendarFocusColor,
+    boxShadow: "0 0 0 2px rgba(123, 203, 255, 0.35)",
+  },
+  _focusVisible: {
+    bg: "rgba(255, 255, 255, 0.25)",
+    borderColor: calendarFocusColor,
+    boxShadow: "0 0 0 2px rgba(123, 203, 255, 0.35)",
+  },
+  sx: {
+    "::-webkit-calendar-picker-indicator": {
+      filter: "invert(1) sepia(1) saturate(4) hue-rotate(180deg)",
+      opacity: 0.9,
+      cursor: "pointer",
+    },
+    "::-webkit-datetime-edit": { color: "white" },
+    "::-webkit-datetime-edit-text": { color: "rgba(255,255,255,0.7)" },
+    "::-webkit-datetime-edit-fields-wrapper": { padding: "0 2px" },
+    "::-webkit-datetime-edit-month-field:focus": {
+      background: "rgba(123, 203, 255, 0.35)",
+      color: "#0B1E3A",
+      borderRadius: "4px",
+    },
+    "::-webkit-datetime-edit-day-field:focus": {
+      background: "rgba(123, 203, 255, 0.35)",
+      color: "#0B1E3A",
+      borderRadius: "4px",
+    },
+    "::-webkit-datetime-edit-year-field:focus": {
+      background: "rgba(123, 203, 255, 0.35)",
+      color: "#0B1E3A",
+      borderRadius: "4px",
+    },
+    "::-webkit-datetime-edit-hour-field:focus": {
+      background: "rgba(123, 203, 255, 0.35)",
+      color: "#0B1E3A",
+      borderRadius: "4px",
+    },
+    "::-webkit-datetime-edit-minute-field:focus": {
+      background: "rgba(123, 203, 255, 0.35)",
+      color: "#0B1E3A",
+      borderRadius: "4px",
+    },
+    "::-webkit-datetime-edit-ampm-field:focus": {
+      background: "rgba(123, 203, 255, 0.35)",
+      color: "#0B1E3A",
+      borderRadius: "4px",
+    },
+  },
+};
+
 const labelStyle = {
   color: "white",
   fontSize: "13px",
@@ -51,11 +109,14 @@ const labelStyle = {
 const UjJegyForm: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
-
-  const utazasId = 1; 
+  const location = useLocation();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+  const foglalasId = id ? Number(id) : null;
 
   const [tipus, setTipus] = useState<FoglalasTipus>("busz");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
 
   // travel
   const [indulasiHely, setIndulasiHely] = useState("");
@@ -80,6 +141,77 @@ const UjJegyForm: React.FC = () => {
     const d = new Date(value);
     return d.toISOString();
   }
+
+  function toDatetimeLocalFromIso(value: string): string {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function applyFoglalas(f: Foglalas) {
+    setTipus(f.tipus);
+    if (f.tipus === "szallas") {
+      setHely(f.hely);
+      setCim(f.cim);
+      setKezdoDatum(f.kezdo_datum);
+      setVegDatum(f.veg_datum);
+    } else {
+      setIndulasiHely(f.indulasi_hely);
+      setErkezesiHely(f.erkezesi_hely);
+      setIndulasiIdo(toDatetimeLocalFromIso(f.indulasi_ido));
+      setErkezesiIdo(toDatetimeLocalFromIso(f.erkezesi_ido));
+      setJaratszam(f.jaratszam ?? "");
+    }
+  }
+
+  useEffect(() => {
+    if (!isEdit || foglalasId === null || Number.isNaN(foglalasId)) return;
+    const stateFoglalas = (location.state as { foglalas?: Foglalas } | null)?.foglalas;
+    if (stateFoglalas?.azonosito === foglalasId) {
+      applyFoglalas(stateFoglalas);
+      return;
+    }
+
+    let isMounted = true;
+    const load = async () => {
+      try {
+        setFetching(true);
+        const res = await listFoglalasok();
+        const found = res.find((item) => item.azonosito === foglalasId);
+        if (!found) {
+          toast({
+            title: "A jegy nem található",
+            status: "warning",
+            duration: 3000,
+            isClosable: true,
+          });
+          navigate("/jegykovetes");
+          return;
+        }
+        if (isMounted) {
+          applyFoglalas(found);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+        toast({
+          title: "Nem sikerült betölteni a jegyet",
+          description: msg,
+          status: "error",
+          duration: 4000,
+          isClosable: true,
+        });
+      } finally {
+        if (isMounted) setFetching(false);
+      }
+    };
+
+    void load();
+    return () => {
+      isMounted = false;
+    };
+  }, [isEdit, foglalasId, location.state, navigate, toast]);
 
   async function onSubmit() {
     try {
@@ -136,7 +268,11 @@ const UjJegyForm: React.FC = () => {
         };
       }
 
-      await createFoglalas(utazasId, dto);
+      if (isEdit && foglalasId !== null && !Number.isNaN(foglalasId)) {
+        await updateFoglalas(foglalasId, dto);
+      } else {
+        await createFoglalas(dto);
+      }
 
       toast({
         title: "Sikeres mentés",
@@ -186,7 +322,7 @@ const UjJegyForm: React.FC = () => {
           align="stretch"
         >
           <Heading size="lg" textAlign="center" fontWeight="700" mb={2}>
-            Új jegy hozzáadása
+            {isEdit ? "Jegy szerkesztése" : "Új jegy hozzáadása"}
           </Heading>
 
           <FormControl>
@@ -241,15 +377,8 @@ const UjJegyForm: React.FC = () => {
                     type="datetime-local"
                     value={indulasiIdo}
                     onChange={(e) => setIndulasiIdo(e.target.value)}
-                    {...glassInputStyle}
+                    {...glassCalendarInputStyle}
                     px={4}
-                    sx={{
-                      '::-webkit-calendar-picker-indicator': {
-                        filter: 'invert(1)',
-                        opacity: 0.8,
-                        cursor: 'pointer'
-                      }
-                    }}
                   />
                 </FormControl>
 
@@ -259,15 +388,8 @@ const UjJegyForm: React.FC = () => {
                     type="datetime-local"
                     value={erkezesiIdo}
                     onChange={(e) => setErkezesiIdo(e.target.value)}
-                    {...glassInputStyle}
+                    {...glassCalendarInputStyle}
                     px={4}
-                    sx={{
-                      '::-webkit-calendar-picker-indicator': {
-                        filter: 'invert(1)',
-                        opacity: 0.8,
-                        cursor: 'pointer'
-                      }
-                    }}
                   />
                 </FormControl>
               </HStack>
@@ -310,37 +432,25 @@ const UjJegyForm: React.FC = () => {
               <HStack spacing={3} w="100%">
                 <FormControl>
                   <FormLabel {...labelStyle}>Kezdő dátum</FormLabel>
-                  <Input
-                    type="date"
-                    value={kezdoDatum}
-                    onChange={(e) => setKezdoDatum(e.target.value)}
-                    {...glassInputStyle}
-                    px={4}
-                    sx={{
-                      '::-webkit-calendar-picker-indicator': {
-                        filter: 'invert(1)',
-                        opacity: 0.8
-                      }
-                    }}
-                  />
-                </FormControl>
+                <Input
+                  type="date"
+                  value={kezdoDatum}
+                  onChange={(e) => setKezdoDatum(e.target.value)}
+                  {...glassCalendarInputStyle}
+                  px={4}
+                />
+              </FormControl>
 
-                <FormControl>
-                  <FormLabel {...labelStyle}>Vég dátum</FormLabel>
-                  <Input
-                    type="date"
-                    value={vegDatum}
-                    onChange={(e) => setVegDatum(e.target.value)}
-                    {...glassInputStyle}
-                    px={4}
-                    sx={{
-                      '::-webkit-calendar-picker-indicator': {
-                        filter: 'invert(1)',
-                        opacity: 0.8
-                      }
-                    }}
-                  />
-                </FormControl>
+              <FormControl>
+                <FormLabel {...labelStyle}>Vég dátum</FormLabel>
+                <Input
+                  type="date"
+                  value={vegDatum}
+                  onChange={(e) => setVegDatum(e.target.value)}
+                  {...glassCalendarInputStyle}
+                  px={4}
+                />
+              </FormControl>
               </HStack>
             </VStack>
           )}
@@ -368,11 +478,11 @@ const UjJegyForm: React.FC = () => {
               fontWeight="600"
               borderRadius="lg"
               _hover={{ filter: "brightness(1.2)" }}
-              isLoading={loading}
+              isLoading={loading || fetching}
               onClick={() => void onSubmit()}
               boxShadow="0 4px 12px rgba(0,0,0,0.2)"
             >
-              Hozzáadás
+              {isEdit ? "Mentés" : "Hozzáadás"}
             </Button>
           </HStack>
         </VStack>

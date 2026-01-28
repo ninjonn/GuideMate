@@ -21,6 +21,9 @@ async function bootstrap() {
     }),
   );
 
+  // CORS engedelyezese fejleszteshez.
+  app.enableCors({ origin: true, credentials: true });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();
