@@ -33,6 +33,61 @@ const glassInputStyle = {
   fontSize: "16px",
 };
 
+const calendarFocusColor = "#7BCBFF";
+const glassCalendarInputStyle = {
+  ...glassInputStyle,
+  _focus: { 
+    bg: "rgba(255, 255, 255, 0.25)", 
+    borderColor: calendarFocusColor, 
+    boxShadow: "0 0 0 2px rgba(123, 203, 255, 0.35)",
+  },
+  _focusVisible: { 
+    bg: "rgba(255, 255, 255, 0.25)", 
+    borderColor: calendarFocusColor, 
+    boxShadow: "0 0 0 2px rgba(123, 203, 255, 0.35)",
+  },
+  sx: {
+    '::-webkit-calendar-picker-indicator': {
+      filter: 'invert(1) sepia(1) saturate(4) hue-rotate(180deg)', // Kékes ikon
+      opacity: 0.9,
+      cursor: 'pointer'
+    },
+    '::-webkit-datetime-edit': { color: 'white' },
+    '::-webkit-datetime-edit-text': { color: 'rgba(255,255,255,0.7)' },
+    '::-webkit-datetime-edit-fields-wrapper': { padding: '0 2px' },
+    '::-webkit-datetime-edit-month-field:focus': {
+      background: 'rgba(123, 203, 255, 0.35)',
+      color: '#0B1E3A',
+      borderRadius: '4px',
+    },
+    '::-webkit-datetime-edit-day-field:focus': {
+      background: 'rgba(123, 203, 255, 0.35)',
+      color: '#0B1E3A',
+      borderRadius: '4px',
+    },
+    '::-webkit-datetime-edit-year-field:focus': {
+      background: 'rgba(123, 203, 255, 0.35)',
+      color: '#0B1E3A',
+      borderRadius: '4px',
+    },
+    '::-webkit-datetime-edit-hour-field:focus': {
+      background: 'rgba(123, 203, 255, 0.35)',
+      color: '#0B1E3A',
+      borderRadius: '4px',
+    },
+    '::-webkit-datetime-edit-minute-field:focus': {
+      background: 'rgba(123, 203, 255, 0.35)',
+      color: '#0B1E3A',
+      borderRadius: '4px',
+    },
+    '::-webkit-datetime-edit-ampm-field:focus': {
+      background: 'rgba(123, 203, 255, 0.35)',
+      color: '#0B1E3A',
+      borderRadius: '4px',
+    },
+  },
+};
+
 const labelStyle = {
   color: "white",
   fontSize: "14px",
@@ -186,15 +241,8 @@ const UjUtHozzaadasaOldal: React.FC = () => {
                   type="date" // JAVÍTVA: date típus a naptárhoz
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  {...glassInputStyle}
+                  {...glassCalendarInputStyle}
                   px={4}
-                  sx={{
-                    '::-webkit-calendar-picker-indicator': {
-                      filter: 'invert(1)', // Fehér ikon sötét háttéren
-                      opacity: 0.8,
-                      cursor: 'pointer'
-                    }
-                  }}
                 />
               </FormControl>
 
@@ -204,15 +252,8 @@ const UjUtHozzaadasaOldal: React.FC = () => {
                   type="date" // JAVÍTVA: date típus a naptárhoz
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  {...glassInputStyle}
+                  {...glassCalendarInputStyle}
                   px={4}
-                  sx={{
-                    '::-webkit-calendar-picker-indicator': {
-                      filter: 'invert(1)',
-                      opacity: 0.8,
-                      cursor: 'pointer'
-                    }
-                  }}
                 />
               </FormControl>
             </HStack>

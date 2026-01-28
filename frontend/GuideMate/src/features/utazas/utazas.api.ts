@@ -44,8 +44,14 @@ export type UtazasDetailResponse = {
   kezdo_datum: string;
   veg_datum: string;
   letrehozas_datuma: string;
-  programok: { azonosito: number; nev: string; nap_datum: string | null }[];
-  foglalasok: { azonosito: number; tipus: string; jaratszam: string | null }[];
+  programok: {
+    azonosito: number;
+    nev: string;
+    leiras: string | null;
+    nap_datum: string | null;
+    kezdo_ido: string;
+    veg_ido: string;
+  }[];
 };
 
 export type CreateUtazasDto = {
@@ -57,8 +63,30 @@ export type CreateUtazasDto = {
 
 export type UpdateUtazasDto = Partial<CreateUtazasDto>;
 
-export function listUtazasok() {
-  return apiFetch<UtazasListResponse>("/api/utazasok", {}, true);
+export type UtazasListQuery = {
+  statusz?: "aktiv" | "lezart" | "torolt";
+  rendez?: "datum" | "nev";
+  oldal?: number;
+  limit?: number;
+};
+
+function buildQuery(query?: UtazasListQuery): string {
+  if (!query) return "";
+  const params = new URLSearchParams();
+  if (query.statusz) params.set("statusz", query.statusz);
+  if (query.rendez) params.set("rendez", query.rendez);
+  if (query.oldal) params.set("oldal", String(query.oldal));
+  if (query.limit) params.set("limit", String(query.limit));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function listUtazasok(query?: UtazasListQuery) {
+  return apiFetch<UtazasListResponse>(
+    `/api/utazasok${buildQuery(query)}`,
+    {},
+    true,
+  );
 }
 
 export function createUtazas(dto: CreateUtazasDto) {
@@ -79,4 +107,12 @@ export function updateUtazas(id: number, dto: UpdateUtazasDto) {
 
 export function getUtazas(id: number) {
   return apiFetch<UtazasDetailResponse>(`/api/utazasok/${id}`, {}, true);
+}
+
+export function deleteUtazas(id: number) {
+  return apiFetch<{ sikeres: boolean; uzenet: string; torolt_utazas_id: number }>(
+    `/api/utazasok/${id}`,
+    { method: "DELETE" },
+    true,
+  );
 }

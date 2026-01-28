@@ -10,9 +10,20 @@ import {
   Button,
   Spinner,
   useToast,
+  useDisclosure,
   HStack,
   Divider,
   Icon,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  FormControl,
+  FormLabel,
+  Input,
 } from '@chakra-ui/react';
 import { EditIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 // JAVÍTÁS ITT: 'type ProfileResponse' explicit jelölése
 import { getProfile, type ProfileResponse } from '../../features/auth/auth.api';
 import { setAuthToken } from '../../lib/api';
+import { changePassword, updateProfile } from '../../features/users/users.api';
 
 const AvatarIcon = (props: React.ComponentProps<typeof Icon>) => (
   <Icon
@@ -42,6 +54,20 @@ const ProfilOldal: React.FC = () => {
   
   const navigate = useNavigate();
   const toast = useToast();
+  const profileModal = useDisclosure();
+  const passwordModal = useDisclosure();
+
+  const [profileDraft, setProfileDraft] = useState({
+    vezeteknev: "",
+    keresztnev: "",
+    email: "",
+  });
+  const [passwordDraft, setPasswordDraft] = useState({
+    regi: "",
+    uj: "",
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // --- Kijelentkezés logikája ---
   const handleLogout = () => {
@@ -65,15 +91,137 @@ const ProfilOldal: React.FC = () => {
     navigate('/bejelentkezes');
   };
 
-  // --- UI eseménykezelő (Checkpoint 2) ---
-  const handleEditClick = () => {
-    toast({
-      title: 'Checkpoint 2',
-      description: 'Szerkesztés később',
-      status: 'info',
-      duration: 2000,
-      isClosable: true,
+  const openProfileEdit = () => {
+    if (!profile) return;
+    const parts = profile.nev.split(" ").filter(Boolean);
+    const vezeteknev = parts[0] ?? "";
+    const keresztnev = parts.slice(1).join(" ");
+    setProfileDraft({
+      vezeteknev,
+      keresztnev,
+      email: profile.email,
     });
+    profileModal.onOpen();
+  };
+
+  const openPasswordEdit = () => {
+    setPasswordDraft({ regi: "", uj: "" });
+    passwordModal.onOpen();
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile) return;
+    const vezeteknev = profileDraft.vezeteknev.trim();
+    const keresztnev = profileDraft.keresztnev.trim();
+    const email = profileDraft.email.trim();
+
+    if ((vezeteknev && !keresztnev) || (!vezeteknev && keresztnev)) {
+      toast({
+        title: "A név mezők együtt kötelezők",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const dto: { vezeteknev?: string; keresztnev?: string; email?: string } = {};
+    if (vezeteknev && keresztnev) {
+      dto.vezeteknev = vezeteknev;
+      dto.keresztnev = keresztnev;
+    }
+    if (email && email !== profile.email) {
+      dto.email = email;
+    }
+
+    if (Object.keys(dto).length === 0) {
+      toast({
+        title: "Nincs változás",
+        status: "info",
+        duration: 2000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+      const res = await updateProfile(dto);
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              nev: res.nev,
+              email: res.email,
+            }
+          : prev,
+      );
+      localStorage.setItem(
+        "gm_user",
+        JSON.stringify({
+          ...(profile ?? {}),
+          nev: res.nev,
+          email: res.email,
+        }),
+      );
+      profileModal.onClose();
+      toast({
+        title: res.uzenet || "Profil frissítve",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Profil frissítés sikertelen",
+        description: msg,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    const regi = passwordDraft.regi.trim();
+    const uj = passwordDraft.uj.trim();
+    if (!regi || !uj) {
+      toast({
+        title: "Add meg a régi és az új jelszót",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    try {
+      setSavingPassword(true);
+      const res = await changePassword({
+        regi_jelszo: regi,
+        uj_jelszo: uj,
+      });
+      passwordModal.onClose();
+      toast({
+        title: res.uzenet || "Jelszó frissítve",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Jelszócsere sikertelen",
+        description: msg,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   // --- Adatbetöltés és Auth ellenőrzés ---
@@ -93,7 +241,7 @@ const ProfilOldal: React.FC = () => {
       try {
         const data = await getProfile();
         setProfile(data);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Profil betöltési hiba:', error);
         
         // Ha hiba van (pl. 401 lejárt token), kijelentkeztetünk
@@ -176,17 +324,17 @@ const ProfilOldal: React.FC = () => {
                 <DataRow 
                   label="Név" 
                   value={profile.nev} 
-                  onEdit={handleEditClick} 
+                  onEdit={openProfileEdit} 
                 />
                 <DataRow 
                   label="Email" 
                   value={profile.email} 
-                  onEdit={handleEditClick} 
+                  onEdit={openProfileEdit} 
                 />
                 <DataRow 
                   label="Jelszó" 
                   value="••••••••••••" 
-                  onEdit={handleEditClick} 
+                  onEdit={openPasswordEdit} 
                 />
               </VStack>
 
@@ -229,6 +377,102 @@ const ProfilOldal: React.FC = () => {
           )}
         </Box>
       </Center>
+
+      <Modal isOpen={profileModal.isOpen} onClose={profileModal.onClose} isCentered>
+        <ModalOverlay backdropFilter="blur(5px)" />
+        <ModalContent borderRadius="xl">
+          <ModalHeader>Profil szerkesztése</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <FormControl>
+                <FormLabel>Vezetéknév</FormLabel>
+                <Input
+                  value={profileDraft.vezeteknev}
+                  onChange={(e) =>
+                    setProfileDraft((prev) => ({ ...prev, vezeteknev: e.target.value }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Keresztnév</FormLabel>
+                <Input
+                  value={profileDraft.keresztnev}
+                  onChange={(e) =>
+                    setProfileDraft((prev) => ({ ...prev, keresztnev: e.target.value }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Email</FormLabel>
+                <Input
+                  type="email"
+                  value={profileDraft.email}
+                  onChange={(e) =>
+                    setProfileDraft((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={profileModal.onClose}>
+              Mégse
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={() => void handleSaveProfile()}
+              isLoading={savingProfile}
+            >
+              Mentés
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={passwordModal.isOpen} onClose={passwordModal.onClose} isCentered>
+        <ModalOverlay backdropFilter="blur(5px)" />
+        <ModalContent borderRadius="xl">
+          <ModalHeader>Jelszó módosítása</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <FormControl>
+                <FormLabel>Régi jelszó</FormLabel>
+                <Input
+                  type="password"
+                  value={passwordDraft.regi}
+                  onChange={(e) =>
+                    setPasswordDraft((prev) => ({ ...prev, regi: e.target.value }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Új jelszó</FormLabel>
+                <Input
+                  type="password"
+                  value={passwordDraft.uj}
+                  onChange={(e) =>
+                    setPasswordDraft((prev) => ({ ...prev, uj: e.target.value }))
+                  }
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={passwordModal.onClose}>
+              Mégse
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={() => void handleSavePassword()}
+              isLoading={savingPassword}
+            >
+              Mentés
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

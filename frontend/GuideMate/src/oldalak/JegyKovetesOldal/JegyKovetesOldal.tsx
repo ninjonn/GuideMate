@@ -31,6 +31,13 @@ const theme = extendTheme({
   fonts: { heading: `'Inter', sans-serif`, body: `'Inter', sans-serif` },
 });
 
+const TIPUS_LABEL: Record<Foglalas["tipus"], string> = {
+  repulo: "repülő",
+  busz: "busz",
+  vonat: "vonat",
+  szallas: "szállás",
+};
+
 function formatDateTime(iso: string) {
   // egyszerű megjelenítés: 2026-01-14T10:00:00.000Z -> helyi
   const d = new Date(iso);
@@ -47,9 +54,6 @@ function formatDateTime(iso: string) {
 const JegyKovetesOldal: React.FC = () => {
   const toast = useToast();
 
-  // Checkpoint 2-re lehet fix (később route param / kiválasztott utazás)
-  const utazasId = 1;
-
   const [loading, setLoading] = useState(false);
   const [foglalasok, setFoglalasok] = useState<Foglalas[]>([]);
   const [query, setQuery] = useState("");
@@ -57,7 +61,7 @@ const JegyKovetesOldal: React.FC = () => {
   async function load() {
     try {
       setLoading(true);
-      const res = await listFoglalasok(utazasId);
+      const res = await listFoglalasok();
       setFoglalasok(res);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
@@ -202,7 +206,7 @@ const JegyKovetesOldal: React.FC = () => {
                 >
                   <Flex justify="space-between" align="start" mb={4}>
                     <Heading size="lg" fontWeight="700" textTransform="capitalize">
-                      {f.tipus}
+                      {TIPUS_LABEL[f.tipus]}
                     </Heading>
 
                     <HStack spacing={2}>
@@ -215,8 +219,9 @@ const JegyKovetesOldal: React.FC = () => {
                         borderRadius="md"
                         border="1px solid rgba(255,255,255,0.3)"
                         _hover={{ bg: "whiteAlpha.200" }}
-                        // TODO: később edit oldal/modal
-                        isDisabled
+                        as={RouterLink}
+                        to={`/jegy-szerkesztes/${f.azonosito}`}
+                        state={{ foglalas: f }}
                       />
                       <IconButton
                         aria-label="Delete"
