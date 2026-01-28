@@ -35,6 +35,78 @@ export type PlacesResult = {
   hasMore: boolean;
 };
 
+export type CoordinatesResult = {
+  lat: number;
+  lon: number;
+  isCountry?: boolean;
+  countryCode?: string;
+  countryName?: string;
+};
+
+type NominatimResult = {
+  lat: string;
+  lon: string;
+  boundingbox?: string[];
+  type?: string;
+  class?: string;
+  addresstype?: string;
+  display_name?: string;
+  address?: {
+    country?: string;
+    country_code?: string;
+    state?: string;
+    city?: string;
+  };
+};
+
+type GeoapifyFeature = {
+  properties: {
+    name?: string;
+    type?: string;
+    place_id?: string | number;
+    formatted?: string;
+    street?: string;
+    address_line1?: string;
+    address_line2?: string;
+  };
+  geometry: {
+    coordinates: [number, number];
+  };
+};
+
+const NOMINATIM_HEADERS = {
+  'User-Agent': 'TravelApp/1.0',
+};
+
+const searchNominatim = async (
+  query: string,
+  options?: { limit?: number; addressdetails?: boolean; extratags?: boolean; countrycodes?: string }
+) => {
+  const params = new URLSearchParams({
+    q: query,
+    format: 'json',
+    limit: String(options?.limit ?? 1),
+  });
+  if (options?.addressdetails) {
+    params.set('addressdetails', '1');
+  }
+  if (options?.extratags) {
+    params.set('extratags', '1');
+  }
+  if (options?.countrycodes) {
+    params.set('countrycodes', options.countrycodes);
+  }
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+    headers: NOMINATIM_HEADERS,
+  });
+  if (!res.ok) {
+    console.error("❌ Nominatim hiba:", res.status);
+    throw new Error("Hely keresési hiba");
+  }
+  const data = await res.json();
+  return data as NominatimResult[];
+};
+
 // 4 KATEGÓRIA - NÉPSZERŰ, MÚZEUM, PARK, ÉTTEREM
 export const SEARCH_CATEGORIES: SearchCategory[] = [
   {
@@ -64,32 +136,38 @@ export const SEARCH_CATEGORIES: SearchCategory[] = [
 ];
 
 // 1. Koordináták (OpenStreetMap - Nominatim)
-export async function getCoordinates(cityName: string) {
+export async function getCoordinates(cityName: string): Promise<CoordinatesResult> {
   console.log(`🔍 Keresés (Nominatim): ${cityName}`);
   
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`,
-      {
-        headers: {
-          'User-Agent': 'TravelApp/1.0'
-        }
-      }
-    );
-    
-    if (!res.ok) {
-      console.error("❌ Nominatim hiba:", res.status);
-      throw new Error("Hely keresési hiba");
-    }
-    
-    const data = await res.json();
-    
+    const data = await searchNominatim(cityName, { limit: 1, addressdetails: true, extratags: true });
+
     if (!data || data.length === 0) {
       console.error("❌ Város nem található:", cityName);
       throw new Error("Hely nem található");
     }
     
     const item = data[0];
+    const countryName = item.address?.country;
+    const countryCode = item.address?.country_code?.toLowerCase();
+    const isCountry =
+      item.addresstype === 'country' ||
+      item.type === 'country' ||
+      (item.class === 'boundary' && item.address?.country_code && !item.address?.state && !item.address?.city);
+
+    if (isCountry && countryCode) {
+      const capitalCoords = await getCapitalCoordinates(countryCode, countryName);
+      if (capitalCoords) {
+        console.log(`✅ Ország találat, főváros koordináták: ${capitalCoords.lat}, ${capitalCoords.lon}`);
+        return {
+          ...capitalCoords,
+          isCountry: true,
+          countryCode,
+          countryName,
+        };
+      }
+    }
+
     const lat = parseFloat(item.lat);
     const lon = parseFloat(item.lon);
     const bbox = Array.isArray(item.boundingbox) ? item.boundingbox : null;
@@ -107,15 +185,73 @@ export async function getCoordinates(cityName: string) {
         const centerLat = (south + north) / 2;
         const centerLon = (west + east) / 2;
         console.log(`✅ Koordináták (bbox közép): ${centerLat}, ${centerLon}`);
-        return { lat: centerLat, lon: centerLon };
+        return { lat: centerLat, lon: centerLon, isCountry, countryCode, countryName };
       }
     }
     console.log(`✅ Koordináták: ${lat}, ${lon}`);
-    return { lat, lon };
+    return { lat, lon, isCountry, countryCode, countryName };
   } catch (error) {
     console.error("❌ Koordináta keresés hiba:", error);
     throw error;
   }
+}
+
+async function getCapitalCoordinates(countryCode: string, countryName?: string): Promise<CoordinatesResult | null> {
+  try {
+    const res = await fetch(
+      `https://restcountries.com/v3.1/alpha/${encodeURIComponent(countryCode)}?fields=capital,capitalInfo`,
+    );
+    if (!res.ok) {
+      console.warn("⚠️ RestCountries API hiba:", res.status);
+      throw new Error("RestCountries API hiba");
+    }
+    const data = await res.json();
+    const entry = Array.isArray(data) ? data[0] : data;
+    const capitalInfo = entry?.capitalInfo?.latlng;
+    if (Array.isArray(capitalInfo) && capitalInfo.length === 2) {
+      return { lat: capitalInfo[0], lon: capitalInfo[1], isCountry: true, countryCode, countryName };
+    }
+    const capitalName = Array.isArray(entry?.capital) ? entry.capital[0] : undefined;
+    if (capitalName) {
+      const nominatimCapital = await searchNominatim(capitalName, {
+        limit: 1,
+        addressdetails: false,
+        countrycodes: countryCode,
+      });
+      const capitalItem = nominatimCapital?.[0];
+      if (capitalItem) {
+        const lat = parseFloat(capitalItem.lat);
+        const lon = parseFloat(capitalItem.lon);
+        if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+          return { lat, lon, isCountry: true, countryCode, countryName };
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("⚠️ Főváros koordináta keresés sikertelen", error);
+  }
+
+  if (countryName) {
+    try {
+      const fallback = await searchNominatim(`${countryName} capital`, {
+        limit: 1,
+        addressdetails: false,
+        countrycodes: countryCode,
+      });
+      const fallbackItem = fallback?.[0];
+      if (fallbackItem) {
+        const lat = parseFloat(fallbackItem.lat);
+        const lon = parseFloat(fallbackItem.lon);
+        if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+          return { lat, lon, isCountry: true, countryCode, countryName };
+        }
+      }
+    } catch (error) {
+      console.warn("⚠️ Főváros fallback sikertelen", error);
+    }
+  }
+
+  return null;
 }
 
 // 1B. SPECIFIKUS HELY KERESÉSE + SZŰRÉS (pl. "Louvre")
@@ -197,7 +333,7 @@ export async function searchAndFilterPlaces(
     
     // SZŰRÉS: Csak azok a helyek, amelyek TARTALMAZZÁK a keresett szót
     const searchTermLower = placeName.toLowerCase();
-    const filteredFeatures = data.features.filter((feature: any) => {
+    const filteredFeatures = (data.features as GeoapifyFeature[]).filter((feature) => {
       const name = feature.properties.name || "";
       return name.toLowerCase().includes(searchTermLower);
     });
@@ -208,7 +344,7 @@ export async function searchAndFilterPlaces(
     const featuresToUse = filteredFeatures.length > 0 ? filteredFeatures : data.features.slice(0, 10);
     
     const places = featuresToUse
-      .map((feature: any) => {
+      .map((feature: GeoapifyFeature) => {
         const props = feature.properties;
         const name = props.name || "Névtelen";
         const lon = feature.geometry.coordinates[0];
@@ -225,7 +361,7 @@ export async function searchAndFilterPlaces(
           image: undefined,
         };
       })
-      .filter((p: any) => p.name && p.name !== "Névtelen");
+      .filter((p) => p.name && p.name !== "Névtelen");
     
     console.log(`✅ Végleges lista: ${places.length}`);
     return places;
@@ -282,9 +418,9 @@ export async function getPlaces(
     }
 
     const rawCount = Array.isArray(data.features) ? data.features.length : 0;
-    const places = data.features
+    const places = (data.features as GeoapifyFeature[])
       .slice(0, limit)
-      .map((feature: any) => {
+      .map((feature) => {
         const props = feature.properties;
         const name = props.name || props.street || props.address_line1 || "Névtelen";
         const lon = feature.geometry.coordinates[0];
@@ -301,7 +437,7 @@ export async function getPlaces(
           image: undefined,
         };
       })
-      .filter((p: any) => p.name && p.name !== "Névtelen");
+      .filter((p) => p.name && p.name !== "Névtelen");
 
     console.log(`✅ Szűrt találatok: ${places.length}`);
     return {

@@ -27,6 +27,7 @@ import {
   searchAndFilterPlaces,
   getMapboxTileUrl, 
   SEARCH_CATEGORIES,
+  type CoordinatesResult,
   type Place 
 } from '../../lib/opentripmap';
 
@@ -34,7 +35,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// @ts-ignore
+// @ts-expect-error Leaflet default icon typing does not expose private field.
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -72,6 +73,18 @@ const glassPanelStyle = {
   borderRadius: "20px",
 };
 
+const LIMIT = 30;
+const DEFAULT_RADIUS = 8000;
+const MIN_RADIUS = 1000;
+const MAX_RADIUS = 12000;
+
+const getViewportRadius = (map: L.Map) => {
+  const bounds = map.getBounds();
+  const center = bounds.getCenter();
+  const radius = map.distance(center, bounds.getNorthEast());
+  return Math.min(Math.max(radius, MIN_RADIUS), MAX_RADIUS);
+};
+
 function MapUpdater({
   center,
   shouldFlyRef,
@@ -82,7 +95,7 @@ function MapUpdater({
   const map = useMap();
   useEffect(() => {
     if (!shouldFlyRef.current) return;
-    map.flyTo(center, 13);
+    map.setView(center, map.getZoom(), { animate: false });
     shouldFlyRef.current = false;
   }, [center, map, shouldFlyRef]);
   return null;
@@ -90,21 +103,28 @@ function MapUpdater({
 
 function MapMoveHandler({
   onMoveEnd,
-  suppressRef,
+  radiusRef,
 }: {
-  onMoveEnd: (center: [number, number]) => void;
-  suppressRef: React.MutableRefObject<boolean>;
+  onMoveEnd: (center: [number, number], radius: number) => void;
+  radiusRef: React.MutableRefObject<number>;
 }) {
-  useMapEvents({
-    moveend: (event) => {
-      if (suppressRef.current) {
-        suppressRef.current = false;
-        return;
-      }
-      const center = event.target.getCenter();
-      onMoveEnd([center.lat, center.lng]);
+  const map = useMapEvents({
+    dragend: () => {
+      const center = map.getCenter();
+      const radius = getViewportRadius(map);
+      radiusRef.current = radius;
+      onMoveEnd([center.lat, center.lng], radius);
+    },
+    zoomend: () => {
+      const center = map.getCenter();
+      const radius = getViewportRadius(map);
+      radiusRef.current = radius;
+      onMoveEnd([center.lat, center.lng], radius);
     },
   });
+  useEffect(() => {
+    radiusRef.current = getViewportRadius(map);
+  }, [map, radiusRef]);
   return null;
 }
 
@@ -123,16 +143,14 @@ const TerkepOldal: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const shouldFlyRef = useRef(false);
-  const suppressNextMoveRef = useRef(false);
-  const LIMIT = 30;
-  const RADIUS = 8000;
+  const mapRadiusRef = useRef(DEFAULT_RADIUS);
+  const requestSeqRef = useRef(0);
 
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
 
   const flyToCenter = (center: [number, number]) => {
     shouldFlyRef.current = true;
-    suppressNextMoveRef.current = true;
     setMapCenter(center);
   };
 
@@ -140,20 +158,28 @@ const TerkepOldal: React.FC = () => {
     center: [number, number],
     categoryId: string,
     nextOffset = 0,
-    append = false
+    append = false,
+    radiusOverride?: number
   ) => {
+    const requestId = (requestSeqRef.current += 1);
+    const radius = radiusOverride ?? mapRadiusRef.current;
     try {
       if (append) {
         setLoadingMore(true);
       } else {
         setLoadingPlaces(true);
+        setLoadingMore(false);
       }
       const result = await getPlaces(center[0], center[1], categoryId, {
         limit: LIMIT,
         offset: nextOffset,
-        radius: RADIUS,
+        radius,
       });
       const normalized = Array.isArray(result.items) ? result.items : [];
+
+      if (requestId !== requestSeqRef.current) {
+        return;
+      }
 
       setPlaces((prev) => {
         const base = append ? prev : [];
@@ -171,11 +197,16 @@ const TerkepOldal: React.FC = () => {
       setOffset(nextOffset);
       setHasMore(result.hasMore);
     } catch (error) {
+      if (requestId !== requestSeqRef.current) {
+        return;
+      }
       const msg = error instanceof Error ? error.message : "Ismeretlen hiba";
       toast({ title: "Hiba", description: msg, status: "error" });
     } finally {
-      setLoadingPlaces(false);
-      setLoadingMore(false);
+      if (requestId === requestSeqRef.current) {
+        setLoadingPlaces(false);
+        setLoadingMore(false);
+      }
     }
   };
 
@@ -187,7 +218,7 @@ const TerkepOldal: React.FC = () => {
     }
 
     // 1) Geokód: város vagy általános koordináta a keresőkifejezésre
-    let coords: { lat: number; lon: number } | null = null;
+    let coords: CoordinatesResult | null = null;
     try {
       coords = await getCoordinates(searchQuery);
     } catch (error) {
@@ -197,7 +228,7 @@ const TerkepOldal: React.FC = () => {
     // 2) Specifikus hely keresése (pl. Louvre, Trófea étterem) csak ha van koordináta és több szavas kifejezés
     const tokens = searchQuery.trim().split(/\s+/);
     const isMultiWord = tokens.length > 1;
-    if (coords && isMultiWord) {
+    if (coords && isMultiWord && !coords.isCountry) {
       try {
         const specificResults = await searchAndFilterPlaces(searchQuery, coords.lat, coords.lon);
         const queryLower = searchQuery.trim().toLowerCase();
@@ -230,7 +261,7 @@ const TerkepOldal: React.FC = () => {
         flyToCenter([coords.lat, coords.lon]);
         setMode('area');
         setOffset(0);
-        await fetchPlaces([coords.lat, coords.lon], selectedCategory, 0, false);
+        await fetchPlaces([coords.lat, coords.lon], selectedCategory, 0, false, mapRadiusRef.current);
         toast({
           title: "✅ Város megtalálva",
           description: `Találatok betöltve`,
@@ -250,7 +281,7 @@ const TerkepOldal: React.FC = () => {
     setSelectedCategory(categoryId);
     setMode('area');
     setOffset(0);
-    await fetchPlaces(mapCenter, categoryId, 0, false);
+    await fetchPlaces(mapCenter, categoryId, 0, false, mapRadiusRef.current);
     const categoryLabel = SEARCH_CATEGORIES.find(c => c.id === categoryId)?.label || categoryId;
     toast({ title: "✅ Szűrve", description: `${categoryLabel} betöltve`, status: "info" });
   };
@@ -266,20 +297,21 @@ const TerkepOldal: React.FC = () => {
     setFormDesc(place.address ?? place.kinds);
   };
 
-  const handleMapMove = (center: [number, number]) => {
+  const handleMapMove = (center: [number, number], radius: number) => {
     setMapCenter(center);
+    mapRadiusRef.current = radius;
     if (mode !== 'area') {
       setMode('area');
     }
     setOffset(0);
     setSelectedPlace(null);
-    void fetchPlaces(center, selectedCategory, 0, false);
+    void fetchPlaces(center, selectedCategory, 0, false, radius);
   };
 
   const handleLoadMore = async () => {
     if (loadingMore || loadingPlaces || mode !== 'area' || !hasMore) return;
     const nextOffset = offset + LIMIT;
-    await fetchPlaces(mapCenter, selectedCategory, nextOffset, true);
+    await fetchPlaces(mapCenter, selectedCategory, nextOffset, true, mapRadiusRef.current);
   };
 
   // Nincs automatikus keresés; a felhasználó indítja.
@@ -307,7 +339,7 @@ const TerkepOldal: React.FC = () => {
             attribution='&copy; <a href="https://www.mapbox.com/">Mapbox</a>'
           />
           <MapUpdater center={mapCenter} shouldFlyRef={shouldFlyRef} />
-          <MapMoveHandler onMoveEnd={handleMapMove} suppressRef={suppressNextMoveRef} />
+          <MapMoveHandler onMoveEnd={handleMapMove} radiusRef={mapRadiusRef} />
           
           {places.map((place) => (
             <Marker 

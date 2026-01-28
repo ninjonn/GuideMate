@@ -109,6 +109,15 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/jegy-szerkesztes/:id",
+    element: (
+      <>
+        <NavigaciosSav />
+        <UjJegyForm />
+      </>
+    ),
+  },
+  {
     path: "/uj-ut-hozzaadasa",
     element: (
       <>

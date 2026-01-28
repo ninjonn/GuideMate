@@ -27,7 +27,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   listUtazasok,
   type UtazasListItem,
+  deleteUtazas,
 } from '../../features/utazas/utazas.api';
+import {
+  createEllenorzoLista,
+  listEllenorzoLista,
+} from '../../features/ellenorzo-lista/ellenorzo-lista.api';
+import {
+  createListaElem,
+  deleteListaElem,
+  updateListaElem,
+} from '../../features/lista-elem/lista-elem.api';
 
 // --- Típusok ---
 type ChecklistItem = {
@@ -101,6 +111,8 @@ const UtazastervezoOldal: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loadingTrips, setLoadingTrips] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeTripId, setActiveTripId] = useState<number | null>(null);
+  const [activeListaId, setActiveListaId] = useState<number | null>(null);
   
   // Input state-ek a checklist modalhoz
   const [newItemName, setNewItemName] = useState("");
@@ -115,10 +127,72 @@ const UtazastervezoOldal: React.FC = () => {
     navigate(`/utazas/${id}`);
   };
 
-  const handleToggleItem = (id: number) => {
-    setChecklist(prev => prev.map(item => 
-      item.id === id ? { ...item, isChecked: !item.isChecked } : item
-    ));
+  const handleDeleteTrip = async (id: number) => {
+    if (!window.confirm("Biztosan törlöd ezt az utazást?")) {
+      return;
+    }
+
+    try {
+      await deleteUtazas(id);
+      setTrips((prev) => {
+        const next = prev.filter((trip) => trip.id !== id);
+        if (activeTripId === id) {
+          setActiveTripId(next[0]?.id ?? null);
+          setChecklist([]);
+          setActiveListaId(null);
+        }
+        return next;
+      });
+      toast({
+        title: "Utazás törölve",
+        status: "success",
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Törlés sikertelen",
+        description: msg,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleToggleItem = async (id: number) => {
+    const current = checklist.find((item) => item.id === id);
+    if (!current) return;
+    if (!activeListaId) {
+      toast({ title: "Nincs ellenőrzőlista", status: "warning", duration: 2000 });
+      return;
+    }
+
+    const nextChecked = !current.isChecked;
+    setChecklist((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, isChecked: nextChecked } : item,
+      ),
+    );
+
+    try {
+      await updateListaElem(id, { kipipalva: nextChecked });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      setChecklist((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, isChecked: current.isChecked } : item,
+        ),
+      );
+      toast({
+        title: "Nem sikerült frissíteni",
+        description: msg,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   // --- Checklist Modal Logic ---
@@ -127,33 +201,109 @@ const UtazastervezoOldal: React.FC = () => {
     checklistModal.onOpen();
   };
 
-  const confirmAddItem = () => {
+  const confirmAddItem = async () => {
     if (newItemName.trim() === "") {
       toast({ title: "Adj meg egy nevet!", status: "warning", duration: 2000 });
       return;
     }
-    const newItem: ChecklistItem = {
-      id: Date.now(),
-      text: newItemName,
-      isChecked: false
-    };
-    setChecklist([...checklist, newItem]);
-    checklistModal.onClose();
-    toast({ title: "Elem hozzáadva", status: "success", duration: 1500 });
-  };
+    if (!activeTripId) {
+      toast({ title: "Nincs kiválasztott utazás", status: "warning", duration: 2000 });
+      return;
+    }
 
-  const handleDeleteChecked = () => {
-    const newList = checklist.filter(item => !item.isChecked);
-    if (newList.length === checklist.length) {
-      toast({ title: "Nincs kijelölt elem", status: "warning", duration: 1000 });
-    } else {
-      setChecklist(newList);
-      toast({ title: "Kijelölt elemek törölve", status: "success", duration: 1000 });
+    try {
+      let listaId = activeListaId;
+      if (!listaId) {
+        const createdList = await createEllenorzoLista(activeTripId, {
+          lista_nev: "Utazó ellenőrzőlista",
+        });
+        listaId = createdList.lista_id;
+        setActiveListaId(listaId);
+      }
+
+      const createdItem = await createListaElem(listaId, {
+        megnevezes: newItemName.trim(),
+      });
+
+      const newItem: ChecklistItem = {
+        id: createdItem.elem_id,
+        text: createdItem.megnevezes,
+        isChecked: createdItem.kipipalva,
+      };
+      setChecklist((prev) => [...prev, newItem]);
+      checklistModal.onClose();
+      toast({ title: "Elem hozzáadva", status: "success", duration: 1500 });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Nem sikerült hozzáadni",
+        description: msg,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
-  const handleSaveChecklist = () => {
-    toast({ title: "Lista mentve", status: "success", duration: 2000 });
+  const handleDeleteChecked = async () => {
+    const toDelete = checklist.filter((item) => item.isChecked);
+    if (toDelete.length === 0) {
+      toast({ title: "Nincs kijelölt elem", status: "warning", duration: 1000 });
+      return;
+    }
+    if (!activeListaId) {
+      toast({ title: "Nincs ellenőrzőlista", status: "warning", duration: 2000 });
+      return;
+    }
+
+    try {
+      await Promise.all(toDelete.map((item) => deleteListaElem(item.id)));
+      setChecklist((prev) => prev.filter((item) => !item.isChecked));
+      toast({ title: "Kijelölt elemek törölve", status: "success", duration: 1000 });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Nem sikerült törölni",
+        description: msg,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleSaveChecklist = async () => {
+    if (!activeTripId) {
+      toast({ title: "Nincs kiválasztott utazás", status: "warning", duration: 2000 });
+      return;
+    }
+    try {
+      const res = await listEllenorzoLista(activeTripId);
+      const lista = res.ellenorzolistak[0];
+      if (!lista) {
+        setChecklist([]);
+        setActiveListaId(null);
+      } else {
+        setActiveListaId(lista.lista_id);
+        setChecklist(
+          lista.elemek.map((elem) => ({
+            id: elem.elem_id,
+            text: elem.megnevezes,
+            isChecked: elem.kipipalva,
+          })),
+        );
+      }
+      toast({ title: "Lista mentve", status: "success", duration: 2000 });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Nem sikerült frissíteni",
+        description: msg,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   // --- Új út hozzáadása: átirányítás külön oldalra ---
@@ -193,6 +343,9 @@ const UtazastervezoOldal: React.FC = () => {
         const res = await listUtazasok();
         const mapped: Trip[] = res.utazasok.map(mapListItemToTrip);
         setTrips(mapped);
+        if (!activeTripId && mapped.length > 0) {
+          setActiveTripId(mapped[0].id);
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
         setLoadError(msg);
@@ -210,6 +363,44 @@ const UtazastervezoOldal: React.FC = () => {
 
     void load();
   }, [toast]);
+
+  useEffect(() => {
+    const loadChecklist = async () => {
+      if (!activeTripId) {
+        setChecklist([]);
+        setActiveListaId(null);
+        return;
+      }
+      try {
+        const res = await listEllenorzoLista(activeTripId);
+        const lista = res.ellenorzolistak[0];
+        if (!lista) {
+          setChecklist([]);
+          setActiveListaId(null);
+          return;
+        }
+        setActiveListaId(lista.lista_id);
+        setChecklist(
+          lista.elemek.map((elem) => ({
+            id: elem.elem_id,
+            text: elem.megnevezes,
+            isChecked: elem.kipipalva,
+          })),
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+        toast({
+          title: "Nem sikerült betölteni a listát",
+          description: msg,
+          status: "error",
+          duration: 4000,
+          isClosable: true,
+        });
+      }
+    };
+
+    void loadChecklist();
+  }, [activeTripId, toast]);
 
   return (
     <Box
@@ -394,6 +585,17 @@ const UtazastervezoOldal: React.FC = () => {
                         Szerkesztés
                       </Button>
                     </HStack>
+                    <Button
+                      mt={3}
+                      bg="rgba(255,255,255,0.3)"
+                      color="white"
+                      width="100%"
+                      borderRadius="lg"
+                      _hover={{ bg: "rgba(255,255,255,0.45)" }}
+                      onClick={() => void handleDeleteTrip(trip.id)}
+                    >
+                      Törlés
+                    </Button>
                   </Box>
                 ))}
               </SimpleGrid>
@@ -405,7 +607,7 @@ const UtazastervezoOldal: React.FC = () => {
 
       {/* --- MODAL 1: Checklist Elem Hozzáadása --- */}
       <Modal isOpen={checklistModal.isOpen} onClose={checklistModal.onClose} isCentered>
-        <ModalOverlay backdropFilter="blur(5px)" />
+        <ModalOverlay backdropFilter="blur(5px)" bg="rgba(255,0,0,0.15)" />
         <ModalContent bg="white" borderRadius="20px" boxShadow="xl">
           <ModalHeader color="#232B5C">Új elem hozzáadása</ModalHeader>
           <ModalCloseButton />

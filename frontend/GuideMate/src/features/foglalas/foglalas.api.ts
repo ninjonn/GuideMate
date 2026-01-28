@@ -45,18 +45,18 @@ export type CreateFoglalasDto = CreateTravelDto | CreateSzallasDto;
 
 export type UpdateFoglalasDto = Partial<CreateFoglalasDto> & { tipus: FoglalasTipus };
 
-export async function listFoglalasok(utazasId: number): Promise<Foglalas[]> {
+export async function listFoglalasok(): Promise<Foglalas[]> {
   const res = await apiFetch<{ foglalasok: Foglalas[] }>(
-    `/api/utazasok/${utazasId}/foglalasok`,
+    "/api/foglalasok",
     { method: "GET" },
     true,
   );
   return res.foglalasok;
 }
 
-export function createFoglalas(utazasId: number, dto: CreateFoglalasDto) {
+export function createFoglalas(dto: CreateFoglalasDto) {
   return apiFetch<Foglalas>(
-    `/api/utazasok/${utazasId}/foglalasok`,
+    "/api/foglalasok",
     { method: "POST", body: JSON.stringify(dto) },
     true,
   );
