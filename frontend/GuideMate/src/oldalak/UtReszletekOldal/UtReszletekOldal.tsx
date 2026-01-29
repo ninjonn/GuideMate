@@ -26,10 +26,10 @@ import {
   Icon,
   Flex,
 } from '@chakra-ui/react';
-import { AddIcon, ChevronDownIcon, CheckIcon, DeleteIcon } from '@chakra-ui/icons';
+import { AddIcon, ChevronDownIcon, CheckIcon, DeleteIcon, EditIcon } from '@chakra-ui/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getUtazas, updateUtazas } from '../../features/utazas/utazas.api';
-import { createProgram, deleteProgram } from '../../features/program/program.api';
+import { createProgram, deleteProgram, updateProgram } from '../../features/program/program.api';
 import {
   createEllenorzoLista,
   listEllenorzoLista,
@@ -145,6 +145,7 @@ const UtReszletekOldal: React.FC = () => {
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventStart, setNewEventStart] = useState("");
   const [newEventEnd, setNewEventEnd] = useState("");
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const daysScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -246,12 +247,48 @@ const UtReszletekOldal: React.FC = () => {
     }
   };
 
-  const handleAddEvent = async () => {
+  const handleOpenNewEvent = () => {
+    setEditingEventId(null);
+    setNewEventTitle("");
+    setNewEventStart("");
+    setNewEventEnd("");
+    onOpen();
+  };
+
+  const handleEditEvent = (event: EventItem) => {
+    setEditingEventId(event.id);
+    setNewEventTitle(event.title);
+    setNewEventStart(event.timeStart);
+    setNewEventEnd(event.timeEnd);
+    onOpen();
+  };
+
+  const handleDeleteEvent = async (eventId: number) => {
+    if (!id) return;
+    const utazasId = Number(id);
+    if (Number.isNaN(utazasId)) return;
+    try {
+      await deleteProgram(eventId);
+      await loadTrip(utazasId);
+      toast({ title: "Esemény törölve", status: "success", duration: 1500 });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
+      toast({
+        title: "Nem sikerült törölni",
+        description: msg,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleSaveEvent = async () => {
     if (!newEventTitle || !newEventStart) {
       toast({ title: "Töltsd ki a mezőket!", status: "warning" });
       return;
     }
-    if (!id || !tripStart) {
+    if (!id) {
       toast({ title: "Hiányzó utazás adat", status: "warning" });
       return;
     }
@@ -259,23 +296,40 @@ const UtReszletekOldal: React.FC = () => {
     if (Number.isNaN(utazasId)) return;
 
     try {
-      const napDatum = addDays(tripStart, activeDay - 1);
-      await createProgram(utazasId, {
-        nev: newEventTitle.trim(),
-        nap_datum: napDatum,
-        kezdo_ido: newEventStart,
-        veg_ido: newEventEnd || newEventStart,
-      });
+      const safeEnd = newEventEnd || newEventStart;
+      if (editingEventId) {
+        await updateProgram(editingEventId, {
+          nev: newEventTitle.trim(),
+          kezdo_ido: newEventStart,
+          veg_ido: safeEnd,
+        });
+      } else {
+        if (!tripStart) {
+          toast({ title: "Hiányzó utazás adat", status: "warning" });
+          return;
+        }
+        const napDatum = addDays(tripStart, activeDay - 1);
+        await createProgram(utazasId, {
+          nev: newEventTitle.trim(),
+          nap_datum: napDatum,
+          kezdo_ido: newEventStart,
+          veg_ido: safeEnd,
+        });
+      }
       await loadTrip(utazasId);
       onClose();
       setNewEventTitle("");
       setNewEventStart("");
       setNewEventEnd("");
-      toast({ title: "Esemény hozzáadva", status: "success" });
+      setEditingEventId(null);
+      toast({
+        title: editingEventId ? "Esemény frissítve" : "Esemény hozzáadva",
+        status: "success",
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
       toast({
-        title: "Nem sikerült hozzáadni az eseményt",
+        title: editingEventId ? "Nem sikerült frissíteni az eseményt" : "Nem sikerült hozzáadni az eseményt",
         description: msg,
         status: "error",
         duration: 4000,
@@ -543,7 +597,7 @@ const UtReszletekOldal: React.FC = () => {
               <HStack spacing={4} w="100%" wrap="wrap" mb={4}>
                 <Button {...glassButtonStyle} width="180px" borderRadius="lg" fontWeight="400" onClick={handleBack}>Visszalépés</Button>
                 <Button bg="#1E2A4F" color="white" borderRadius="lg" leftIcon={<AddIcon fontSize="xs" />} _hover={{ bg: "#151d36" }} px={6} onClick={handleAddDay}>új nap hozzáadása</Button>
-                <Button bg="#3B49DF" color="white" borderRadius="lg" leftIcon={<AddIcon fontSize="xs" />} rightIcon={<ChevronDownIcon />} _hover={{ bg: "#2b36a8" }} px={6} onClick={onOpen}>új program</Button>
+                <Button bg="#3B49DF" color="white" borderRadius="lg" leftIcon={<AddIcon fontSize="xs" />} rightIcon={<ChevronDownIcon />} _hover={{ bg: "#2b36a8" }} px={6} onClick={handleOpenNewEvent}>új program</Button>
               </HStack>
 
               <Box 
@@ -574,6 +628,26 @@ const UtReszletekOldal: React.FC = () => {
                       <Box {...whiteCardStyle} minH="80px">
                         <Heading size="md" mb={1} color="#1E2A4F">{event.title}</Heading>
                         <Text fontSize="sm" color="gray.500">{event.timeStart} - {event.timeEnd}</Text>
+                        <HStack spacing={2} mt={3}>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            colorScheme="blue"
+                            leftIcon={<EditIcon />}
+                            onClick={() => handleEditEvent(event)}
+                          >
+                            Szerkesztés
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            colorScheme="red"
+                            leftIcon={<DeleteIcon />}
+                            onClick={() => void handleDeleteEvent(event.id)}
+                          >
+                            Törlés
+                          </Button>
+                        </HStack>
                         <Box h="1px" bg="gray.300" mt={6} w="100%" />
                       </Box>
                     </Flex>
@@ -653,7 +727,7 @@ const UtReszletekOldal: React.FC = () => {
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay backdropFilter="blur(5px)" />
         <ModalContent borderRadius="xl">
-          <ModalHeader>Új program</ModalHeader>
+          <ModalHeader>{editingEventId ? "Program szerkesztése" : "Új program"}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={4}>
@@ -666,7 +740,9 @@ const UtReszletekOldal: React.FC = () => {
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" mr={3} onClick={onClose}>Mégse</Button>
-            <Button colorScheme="blue" onClick={() => void handleAddEvent()}>Mentés</Button>
+            <Button colorScheme="blue" onClick={() => void handleSaveEvent()}>
+              {editingEventId ? "Mentés" : "Hozzáadás"}
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

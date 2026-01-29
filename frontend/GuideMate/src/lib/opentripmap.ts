@@ -1,4 +1,3 @@
-// src/lib/opentripmap.ts
 
 // API KULCSOK
 const GEOAPIFY_API_KEY = "589fb45a2e214ff38069dffee50a6d77";
@@ -153,7 +152,10 @@ export async function getCoordinates(cityName: string): Promise<CoordinatesResul
     const isCountry =
       item.addresstype === 'country' ||
       item.type === 'country' ||
-      (item.class === 'boundary' && item.address?.country_code && !item.address?.state && !item.address?.city);
+      (item.class === 'boundary' &&
+        Boolean(item.address?.country_code) &&
+        !item.address?.state &&
+        !item.address?.city);
 
     if (isCountry && countryCode) {
       const capitalCoords = await getCapitalCoordinates(countryCode, countryName);
@@ -361,7 +363,7 @@ export async function searchAndFilterPlaces(
           image: undefined,
         };
       })
-      .filter((p) => p.name && p.name !== "Névtelen");
+      .filter((p: Place) => p.name && p.name !== "Névtelen");
     
     console.log(`✅ Végleges lista: ${places.length}`);
     return places;
@@ -437,7 +439,7 @@ export async function getPlaces(
           image: undefined,
         };
       })
-      .filter((p) => p.name && p.name !== "Névtelen");
+      .filter((p: Place) => p.name && p.name !== "Névtelen");
 
     console.log(`✅ Szűrt találatok: ${places.length}`);
     return {
