@@ -20,20 +20,7 @@ model Felhasznalo {
   szerepkor        String            @default("felhasznalo")
   letrehozva       DateTime          @default(now())
   utazasResztvevok UtazasResztvevo[]
-  tokenek          UserAccessToken[]
   foglalasok       Foglalas[]
-}
-
-model UserAccessToken {
-  token_id       String   @id @default(uuid())
-  felhasznalo_id Int
-  nev            String
-  date_created   DateTime @default(now())
-  expiration     DateTime
-
-  felhasznalo Felhasznalo @relation(fields: [felhasznalo_id], references: [felhasznalo_id])
-
-  @@index([felhasznalo_id])
 }
 
 model Helyszin {
