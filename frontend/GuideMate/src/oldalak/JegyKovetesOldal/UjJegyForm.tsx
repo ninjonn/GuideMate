@@ -2,15 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  Center,
   FormControl,
   FormLabel,
   Heading,
+  HStack,
   Input,
   Select,
   VStack,
   useToast,
-  HStack,
-  Center,
 } from "@chakra-ui/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -21,8 +21,9 @@ import {
   type CreateFoglalasDto,
   type FoglalasTipus,
 } from "../../features/foglalas/foglalas.api";
+import ChakraDatePicker from "../../komponensek/ui/ChakraDatePicker";
 
-// --- Stílus konstansok ---
+// --- Stílusok ---
 const glassInputStyle = {
   bg: "rgba(255, 255, 255, 0.15)",
   border: "1px solid rgba(255, 255, 255, 0.3)",
@@ -30,8 +31,8 @@ const glassInputStyle = {
   _placeholder: { color: "rgba(255, 255, 255, 0.7)" },
   _focus: { 
     bg: "rgba(255, 255, 255, 0.25)", 
-    borderColor: "white", 
-    boxShadow: "none" 
+    borderColor: "#7BCBFF", 
+    boxShadow: "0 0 0 1px #7BCBFF" 
   },
   _hover: {
     bg: "rgba(255, 255, 255, 0.2)",
@@ -40,61 +41,7 @@ const glassInputStyle = {
   height: "48px",
   fontSize: "15px",
   width: "100%",
-};
-
-const calendarFocusColor = "#7BCBFF";
-const glassCalendarInputStyle = {
-  ...glassInputStyle,
-  _focus: {
-    bg: "rgba(255, 255, 255, 0.25)",
-    borderColor: calendarFocusColor,
-    boxShadow: "0 0 0 2px rgba(123, 203, 255, 0.35)",
-  },
-  _focusVisible: {
-    bg: "rgba(255, 255, 255, 0.25)",
-    borderColor: calendarFocusColor,
-    boxShadow: "0 0 0 2px rgba(123, 203, 255, 0.35)",
-  },
-  sx: {
-    "::-webkit-calendar-picker-indicator": {
-      filter: "invert(1) sepia(1) saturate(4) hue-rotate(180deg)",
-      opacity: 0.9,
-      cursor: "pointer",
-    },
-    "::-webkit-datetime-edit": { color: "white" },
-    "::-webkit-datetime-edit-text": { color: "rgba(255,255,255,0.7)" },
-    "::-webkit-datetime-edit-fields-wrapper": { padding: "0 2px" },
-    "::-webkit-datetime-edit-month-field:focus": {
-      background: "rgba(123, 203, 255, 0.35)",
-      color: "#0B1E3A",
-      borderRadius: "4px",
-    },
-    "::-webkit-datetime-edit-day-field:focus": {
-      background: "rgba(123, 203, 255, 0.35)",
-      color: "#0B1E3A",
-      borderRadius: "4px",
-    },
-    "::-webkit-datetime-edit-year-field:focus": {
-      background: "rgba(123, 203, 255, 0.35)",
-      color: "#0B1E3A",
-      borderRadius: "4px",
-    },
-    "::-webkit-datetime-edit-hour-field:focus": {
-      background: "rgba(123, 203, 255, 0.35)",
-      color: "#0B1E3A",
-      borderRadius: "4px",
-    },
-    "::-webkit-datetime-edit-minute-field:focus": {
-      background: "rgba(123, 203, 255, 0.35)",
-      color: "#0B1E3A",
-      borderRadius: "4px",
-    },
-    "::-webkit-datetime-edit-ampm-field:focus": {
-      background: "rgba(123, 203, 255, 0.35)",
-      color: "#0B1E3A",
-      borderRadius: "4px",
-    },
-  },
+  cursor: "pointer"
 };
 
 const labelStyle = {
@@ -106,6 +53,7 @@ const labelStyle = {
   opacity: 0.9
 };
 
+// --- FŐ FORLAP KOMPONENS ---
 const UjJegyForm: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
@@ -118,50 +66,36 @@ const UjJegyForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
 
-  // travel
+  // travel state
   const [indulasiHely, setIndulasiHely] = useState("");
   const [erkezesiHely, setErkezesiHely] = useState("");
-  const [indulasiIdo, setIndulasiIdo] = useState(""); 
-  const [erkezesiIdo, setErkezesiIdo] = useState(""); 
+  const [indulasiIdo, setIndulasiIdo] = useState<Date | null>(null);
+  const [erkezesiIdo, setErkezesiIdo] = useState<Date | null>(null);
   const [jaratszam, setJaratszam] = useState("");
 
-  // szállás
+  // szállás state
   const [hely, setHely] = useState("");
   const [cim, setCim] = useState("");
-  const [kezdoDatum, setKezdoDatum] = useState(""); 
-  const [vegDatum, setVegDatum] = useState(""); 
+  const [kezdoDatum, setKezdoDatum] = useState<Date | null>(null);
+  const [vegDatum, setVegDatum] = useState<Date | null>(null);
 
   const isTravel = useMemo(
     () => tipus === "repulo" || tipus === "busz" || tipus === "vonat",
     [tipus],
   );
 
-  function toIsoFromDatetimeLocal(value: string): string {
-    if (!value) return "";
-    const d = new Date(value);
-    return d.toISOString();
-  }
-
-  function toDatetimeLocalFromIso(value: string): string {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
   function applyFoglalas(f: Foglalas) {
     setTipus(f.tipus);
     if (f.tipus === "szallas") {
       setHely(f.hely);
       setCim(f.cim);
-      setKezdoDatum(f.kezdo_datum);
-      setVegDatum(f.veg_datum);
+      setKezdoDatum(f.kezdo_datum ? new Date(f.kezdo_datum) : null);
+      setVegDatum(f.veg_datum ? new Date(f.veg_datum) : null);
     } else {
       setIndulasiHely(f.indulasi_hely);
       setErkezesiHely(f.erkezesi_hely);
-      setIndulasiIdo(toDatetimeLocalFromIso(f.indulasi_ido));
-      setErkezesiIdo(toDatetimeLocalFromIso(f.erkezesi_ido));
+      setIndulasiIdo(f.indulasi_ido ? new Date(f.indulasi_ido) : null);
+      setErkezesiIdo(f.erkezesi_ido ? new Date(f.erkezesi_ido) : null);
       setJaratszam(f.jaratszam ?? "");
     }
   }
@@ -181,116 +115,61 @@ const UjJegyForm: React.FC = () => {
         const res = await listFoglalasok();
         const found = res.find((item) => item.azonosito === foglalasId);
         if (!found) {
-          toast({
-            title: "A jegy nem található",
-            status: "warning",
-            duration: 3000,
-            isClosable: true,
-          });
+          toast({ title: "A jegy nem található", status: "warning", duration: 3000, isClosable: true });
           navigate("/jegykovetes");
           return;
         }
-        if (isMounted) {
-          applyFoglalas(found);
-        }
+        if (isMounted) applyFoglalas(found);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
-        toast({
-          title: "Nem sikerült betölteni a jegyet",
-          description: msg,
-          status: "error",
-          duration: 4000,
-          isClosable: true,
-        });
+        toast({ title: "Hiba", description: "Nem sikerült betölteni", status: "error" });
       } finally {
         if (isMounted) setFetching(false);
       }
     };
-
     void load();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [isEdit, foglalasId, location.state, navigate, toast]);
 
   async function onSubmit() {
     try {
       setLoading(true);
-
       let dto: CreateFoglalasDto;
 
       if (isTravel) {
-        const a = indulasiHely.trim();
-        const b = erkezesiHely.trim();
-
-        if (!a || !b || !indulasiIdo || !erkezesiIdo) {
-          toast({
-            title: "Hiányzó adatok",
-            description: "Add meg az indulási/érkezési helyet és időpontokat.",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
-          setLoading(false);
-          return;
+        if (!indulasiHely || !erkezesiHely || !indulasiIdo || !erkezesiIdo) {
+          throw new Error("Töltsd ki a kötelező mezőket (helyek, idők)!");
         }
-
         dto = {
           tipus: tipus as "repulo" | "busz" | "vonat",
-          indulasi_hely: a,
-          erkezesi_hely: b,
-          indulasi_ido: toIsoFromDatetimeLocal(indulasiIdo),
-          erkezesi_ido: toIsoFromDatetimeLocal(erkezesiIdo),
-          jaratszam: jaratszam.trim() ? jaratszam.trim() : null,
+          indulasi_hely: indulasiHely,
+          erkezesi_hely: erkezesiHely,
+          indulasi_ido: indulasiIdo.toISOString(),
+          erkezesi_ido: erkezesiIdo.toISOString(),
+          jaratszam: jaratszam || null,
         };
       } else {
-        const h = hely.trim();
-        const c = cim.trim();
-
-        if (!h || !c || !kezdoDatum || !vegDatum) {
-          toast({
-            title: "Hiányzó adatok",
-            description: "Add meg a szállás helyét, címét és dátumokat.",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-          });
-          setLoading(false);
-          return;
+        if (!hely || !cim || !kezdoDatum || !vegDatum) {
+          throw new Error("Töltsd ki a kötelező mezőket (hely, cím, dátumok)!");
         }
-
         dto = {
           tipus: "szallas",
-          hely: h,
-          cim: c,
-          kezdo_datum: kezdoDatum,
-          veg_datum: vegDatum,
+          hely,
+          cim,
+          kezdo_datum: kezdoDatum.toISOString().split("T")[0],
+          veg_datum: vegDatum.toISOString().split("T")[0],
         };
       }
 
-      if (isEdit && foglalasId !== null && !Number.isNaN(foglalasId)) {
+      if (isEdit && foglalasId) {
         await updateFoglalas(foglalasId, dto);
       } else {
         await createFoglalas(dto);
       }
 
-      toast({
-        title: "Sikeres mentés",
-        status: "success",
-        duration: 2000,
-        isClosable: true,
-      });
-
+      toast({ title: "Sikeres mentés", status: "success", duration: 2000 });
       navigate("/jegykovetes");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
-      toast({
-        title: "Mentés sikertelen",
-        description: msg,
-        status: "error",
-        duration: 4000,
-        isClosable: true,
-      });
+    } catch (err: any) {
+      toast({ title: "Hiba", description: err.message || "Sikertelen mentés", status: "error" });
     } finally {
       setLoading(false);
     }
@@ -308,12 +187,9 @@ const UjJegyForm: React.FC = () => {
     >
       <Center minH="100vh" px={4} mt={-20}>
         <VStack
-          // JAVÍTÁS: Növelt szélesség (560px), hogy minden kényelmesen elférjen
           w={{ base: "100%", sm: "560px" }} 
           spacing={5} 
           p={{ base: 6, md: 8 }}
-          
-          // --- Glassmorphism Container ---
           bg="rgba(255, 255, 255, 0.15)"
           backdropFilter="blur(12px)"
           borderRadius="20px"
@@ -332,10 +208,7 @@ const UjJegyForm: React.FC = () => {
               onChange={(e) => setTipus(e.target.value as FoglalasTipus)}
               sx={{
                 ...glassInputStyle,
-                '> option': {
-                  background: '#232B5C',
-                  color: 'white'
-                }
+                '> option': { background: '#232B5C', color: 'white' }
               }}
               iconColor="white"
             >
@@ -350,138 +223,85 @@ const UjJegyForm: React.FC = () => {
             <VStack spacing={4}>
               <FormControl>
                 <FormLabel {...labelStyle}>Kiindulási hely</FormLabel>
-                <Input
-                  value={indulasiHely}
-                  onChange={(e) => setIndulasiHely(e.target.value)}
-                  placeholder="Pl. Budapest"
-                  {...glassInputStyle}
-                  px={4}
-                />
+                <Input value={indulasiHely} onChange={(e) => setIndulasiHely(e.target.value)} placeholder="Pl. Budapest" {...glassInputStyle} px={4} />
               </FormControl>
 
               <FormControl>
                 <FormLabel {...labelStyle}>Érkezési hely</FormLabel>
-                <Input
-                  value={erkezesiHely}
-                  onChange={(e) => setErkezesiHely(e.target.value)}
-                  placeholder="Pl. Párizs"
-                  {...glassInputStyle}
-                  px={4}
-                />
+                <Input value={erkezesiHely} onChange={(e) => setErkezesiHely(e.target.value)} placeholder="Pl. Párizs" {...glassInputStyle} px={4} />
               </FormControl>
 
               <HStack spacing={3} w="100%">
                 <FormControl>
                   <FormLabel {...labelStyle}>Indulás ideje</FormLabel>
-                  <Input
-                    type="datetime-local"
-                    value={indulasiIdo}
-                    onChange={(e) => setIndulasiIdo(e.target.value)}
-                    {...glassCalendarInputStyle}
-                    px={4}
+                  <ChakraDatePicker
+                    selectedDate={indulasiIdo}
+                    onChange={setIndulasiIdo}
+                    showTime={true}
+                    placeholder="Válassz időpontot"
                   />
                 </FormControl>
 
                 <FormControl>
                   <FormLabel {...labelStyle}>Érkezés ideje</FormLabel>
-                  <Input
-                    type="datetime-local"
-                    value={erkezesiIdo}
-                    onChange={(e) => setErkezesiIdo(e.target.value)}
-                    {...glassCalendarInputStyle}
-                    px={4}
+                  <ChakraDatePicker
+                    selectedDate={erkezesiIdo}
+                    onChange={setErkezesiIdo}
+                    showTime={true}
+                    placeholder="Válassz időpontot"
+                    minDate={indulasiIdo || undefined}
                   />
                 </FormControl>
               </HStack>
 
               <FormControl>
                 <FormLabel {...labelStyle}>Járatszám (opcionális)</FormLabel>
-                <Input
-                  value={jaratszam}
-                  onChange={(e) => setJaratszam(e.target.value)}
-                  placeholder="A járatod száma..."
-                  {...glassInputStyle}
-                  px={4}
-                />
+                <Input value={jaratszam} onChange={(e) => setJaratszam(e.target.value)} placeholder="A járatod száma..." {...glassInputStyle} px={4} />
               </FormControl>
             </VStack>
           ) : (
             <VStack spacing={4}>
               <FormControl>
                 <FormLabel {...labelStyle}>Hely</FormLabel>
-                <Input
-                  value={hely}
-                  onChange={(e) => setHely(e.target.value)}
-                  placeholder="Pl. Hotel neve"
-                  {...glassInputStyle}
-                  px={4}
-                />
+                <Input value={hely} onChange={(e) => setHely(e.target.value)} placeholder="Pl. Hotel neve" {...glassInputStyle} px={4} />
               </FormControl>
 
               <FormControl>
                 <FormLabel {...labelStyle}>Cím</FormLabel>
-                <Input
-                  value={cim}
-                  onChange={(e) => setCim(e.target.value)}
-                  placeholder="Pl. Utca, házszám"
-                  {...glassInputStyle}
-                  px={4}
-                />
+                <Input value={cim} onChange={(e) => setCim(e.target.value)} placeholder="Pl. Utca, házszám" {...glassInputStyle} px={4} />
               </FormControl>
 
               <HStack spacing={3} w="100%">
                 <FormControl>
                   <FormLabel {...labelStyle}>Kezdő dátum</FormLabel>
-                <Input
-                  type="date"
-                  value={kezdoDatum}
-                  onChange={(e) => setKezdoDatum(e.target.value)}
-                  {...glassCalendarInputStyle}
-                  px={4}
-                />
-              </FormControl>
+                  <ChakraDatePicker
+                    selectedDate={kezdoDatum}
+                    onChange={setKezdoDatum}
+                    showTime={false}
+                    placeholder="ÉÉÉÉ. HH. NN."
+                  />
+                </FormControl>
 
-              <FormControl>
-                <FormLabel {...labelStyle}>Vég dátum</FormLabel>
-                <Input
-                  type="date"
-                  value={vegDatum}
-                  onChange={(e) => setVegDatum(e.target.value)}
-                  {...glassCalendarInputStyle}
-                  px={4}
-                />
-              </FormControl>
+                <FormControl>
+                  <FormLabel {...labelStyle}>Vég dátum</FormLabel>
+                  <ChakraDatePicker
+                    selectedDate={vegDatum}
+                    onChange={setVegDatum}
+                    showTime={false}
+                    placeholder="ÉÉÉÉ. HH. NN."
+                    minDate={kezdoDatum || undefined}
+                  />
+                </FormControl>
               </HStack>
             </VStack>
           )}
 
-          {/* Gombok */}
           <HStack spacing={3} pt={4} justify="space-between">
-             <Button
-              bg="white"
-              color="#232B5C"
-              height="48px"
-              width="48%"
-              fontWeight="600"
-              borderRadius="lg"
-              _hover={{ bg: "gray.200" }}
-              onClick={() => navigate(-1)}
-            >
+             <Button bg="white" color="#232B5C" height="48px" width="48%" fontWeight="600" borderRadius="lg" _hover={{ bg: "gray.200" }} onClick={() => navigate(-1)}>
               Mégse
             </Button>
             
-            <Button
-              bg="#232B5C"
-              color="white"
-              height="48px"
-              width="48%"
-              fontWeight="600"
-              borderRadius="lg"
-              _hover={{ filter: "brightness(1.2)" }}
-              isLoading={loading || fetching}
-              onClick={() => void onSubmit()}
-              boxShadow="0 4px 12px rgba(0,0,0,0.2)"
-            >
+            <Button bg="#232B5C" color="white" height="48px" width="48%" fontWeight="600" borderRadius="lg" _hover={{ filter: "brightness(1.2)" }} isLoading={loading || fetching} onClick={() => void onSubmit()} boxShadow="0 4px 12px rgba(0,0,0,0.2)">
               {isEdit ? "Mentés" : "Hozzáadás"}
             </Button>
           </HStack>
