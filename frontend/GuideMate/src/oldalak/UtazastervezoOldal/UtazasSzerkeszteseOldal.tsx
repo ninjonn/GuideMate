@@ -12,8 +12,10 @@ import {
   VStack,
   useToast,
 } from '@chakra-ui/react';
+import { format, parse } from 'date-fns';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getUtazas, updateUtazas } from '../../features/utazas/utazas.api';
+import ChakraDatePicker from '../../komponensek/ui/ChakraDatePicker';
 
 // --- Stílus konstansok (Konzisztens a többi oldallal) ---
 const glassInputStyle = {
@@ -32,61 +34,6 @@ const glassInputStyle = {
   borderRadius: 'lg',
   height: '50px',
   fontSize: '16px',
-};
-
-const calendarFocusColor = '#7BCBFF';
-const glassCalendarInputStyle = {
-  ...glassInputStyle,
-  _focus: {
-    bg: 'rgba(255, 255, 255, 0.25)',
-    borderColor: calendarFocusColor,
-    boxShadow: '0 0 0 2px rgba(123, 203, 255, 0.35)',
-  },
-  _focusVisible: {
-    bg: 'rgba(255, 255, 255, 0.25)',
-    borderColor: calendarFocusColor,
-    boxShadow: '0 0 0 2px rgba(123, 203, 255, 0.35)',
-  },
-  sx: {
-    '::-webkit-calendar-picker-indicator': {
-      filter: 'invert(1) sepia(1) saturate(4) hue-rotate(180deg)',
-      opacity: 0.9,
-      cursor: 'pointer',
-    },
-    '::-webkit-datetime-edit': { color: 'white' },
-    '::-webkit-datetime-edit-text': { color: 'rgba(255,255,255,0.7)' },
-    '::-webkit-datetime-edit-fields-wrapper': { padding: '0 2px' },
-    '::-webkit-datetime-edit-month-field:focus': {
-      background: 'rgba(123, 203, 255, 0.35)',
-      color: '#0B1E3A',
-      borderRadius: '4px',
-    },
-    '::-webkit-datetime-edit-day-field:focus': {
-      background: 'rgba(123, 203, 255, 0.35)',
-      color: '#0B1E3A',
-      borderRadius: '4px',
-    },
-    '::-webkit-datetime-edit-year-field:focus': {
-      background: 'rgba(123, 203, 255, 0.35)',
-      color: '#0B1E3A',
-      borderRadius: '4px',
-    },
-    '::-webkit-datetime-edit-hour-field:focus': {
-      background: 'rgba(123, 203, 255, 0.35)',
-      color: '#0B1E3A',
-      borderRadius: '4px',
-    },
-    '::-webkit-datetime-edit-minute-field:focus': {
-      background: 'rgba(123, 203, 255, 0.35)',
-      color: '#0B1E3A',
-      borderRadius: '4px',
-    },
-    '::-webkit-datetime-edit-ampm-field:focus': {
-      background: 'rgba(123, 203, 255, 0.35)',
-      color: '#0B1E3A',
-      borderRadius: '4px',
-    },
-  },
 };
 
 const labelStyle = {
@@ -112,8 +59,8 @@ const UtazasSzerkeszteseOldal: React.FC = () => {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -126,8 +73,14 @@ const UtazasSzerkeszteseOldal: React.FC = () => {
         const res = await getUtazas(Number(id));
         setTitle(res.cim);
         setDescription(res.leiras ?? '');
-        setStartDate(res.kezdo_datum);
-        setEndDate(res.veg_datum);
+        setStartDate(
+          res.kezdo_datum
+            ? parse(res.kezdo_datum, 'yyyy-MM-dd', new Date())
+            : null,
+        );
+        setEndDate(
+          res.veg_datum ? parse(res.veg_datum, 'yyyy-MM-dd', new Date()) : null,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Ismeretlen hiba';
         toast({
@@ -156,7 +109,7 @@ const UtazasSzerkeszteseOldal: React.FC = () => {
       return;
     }
 
-    if (new Date(startDate) > new Date(endDate)) {
+    if (startDate > endDate) {
       toast({
         title: 'Hibás dátum',
         description: 'A záró dátum nem lehet korábban, mint a kezdő dátum.',
@@ -173,11 +126,13 @@ const UtazasSzerkeszteseOldal: React.FC = () => {
       if (!id) {
         throw new Error('Hiányzó utazás ID');
       }
+      const formattedStart = format(startDate, 'yyyy-MM-dd');
+      const formattedEnd = format(endDate, 'yyyy-MM-dd');
       const res = await updateUtazas(Number(id), {
         cim: title,
         leiras: description || undefined,
-        kezdo_datum: startDate,
-        veg_datum: endDate,
+        kezdo_datum: formattedStart,
+        veg_datum: formattedEnd,
       });
 
       toast({
@@ -270,26 +225,25 @@ const UtazasSzerkeszteseOldal: React.FC = () => {
               <HStack spacing={4} w="100%">
                 <FormControl>
                   <FormLabel {...labelStyle}>Kezdő dátum</FormLabel>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  {...glassCalendarInputStyle}
-                  px={4}
-                />
-              </FormControl>
+                  <ChakraDatePicker
+                    selectedDate={startDate}
+                    onChange={setStartDate}
+                    showTime={false}
+                    placeholder="ÉÉÉÉ. HH. NN."
+                  />
+                </FormControl>
 
-              <FormControl>
-                <FormLabel {...labelStyle}>Záró Dátum</FormLabel>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  {...glassCalendarInputStyle}
-                  px={4}
-                />
-              </FormControl>
-            </HStack>
+                <FormControl>
+                  <FormLabel {...labelStyle}>Záró dátum</FormLabel>
+                  <ChakraDatePicker
+                    selectedDate={endDate}
+                    onChange={setEndDate}
+                    showTime={false}
+                    placeholder="ÉÉÉÉ. HH. NN."
+                    minDate={startDate || undefined}
+                  />
+                </FormControl>
+              </HStack>
             </VStack>
           )}
 
