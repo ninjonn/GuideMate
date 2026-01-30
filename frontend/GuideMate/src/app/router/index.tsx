@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import NavigaciosSav from "../layout/NavigaciosSav";
+import AuthGuard from "./AuthGuard";
 
 // OLDALAK IMPORTÁLÁSA
 import Fooldal from "../../oldalak/Fooldal/Fooldal";
@@ -48,10 +49,12 @@ export const router = createBrowserRouter([
   {
     path: "/utazastervezo",
     element: (
-      <>
-        <NavigaciosSav />
-        <UtazastervezoOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <UtazastervezoOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {
@@ -66,73 +69,89 @@ export const router = createBrowserRouter([
   {
     path: "/utazas/:id",
     element: (
-      <>
-        <NavigaciosSav />
-        <UtReszletekOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <UtReszletekOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/jegykovetes",
     element: (
-      <>
-        <NavigaciosSav />
-        <JegyKovetesOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <JegyKovetesOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/profil",
     element: (
-      <>
-        <NavigaciosSav />
-        <ProfilOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <ProfilOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/admin",
     element: (
-      <>
-        <NavigaciosSav />
-        <AdminOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <AdminOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/uj-jegy",
     element: (
-      <>
-        <NavigaciosSav />
-        <UjJegyForm />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <UjJegyForm />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/jegy-szerkesztes/:id",
     element: (
-      <>
-        <NavigaciosSav />
-        <UjJegyForm />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <UjJegyForm />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/uj-ut-hozzaadasa",
     element: (
-      <>
-        <NavigaciosSav />
-        <UjUtHozzaadasaOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <UjUtHozzaadasaOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {
     path: "/utazas-szerkesztese/:id",
     element: (
-      <>
-        <NavigaciosSav />
-        <UtazasSzerkeszteseOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <UtazasSzerkeszteseOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {

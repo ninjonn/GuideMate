@@ -60,14 +60,6 @@ const glassStyleCommon = {
   borderRadius: "20px",
 };
 
-// Mobilon sárga checklist stílus
-const mobileChecklistStyle = {
-  bg: "#F6C95C", // Sárga
-  borderRadius: "20px",
-  boxShadow: "lg",
-  color: "#2D3748",
-};
-
 const glassButtonStyle = {
   bg: "rgba(255, 255, 255, 0.15)",
   border: "1px solid rgba(255, 255, 255, 0.2)",
@@ -133,8 +125,11 @@ const UtReszletekOldal: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const toast = useToast();
+  
+  // Modals
   const { isOpen, onOpen, onClose } = useDisclosure(); 
-  const checklistModal = useDisclosure();
+  const checklistAddModal = useDisclosure(); // Új elem hozzáadása
+  const mobileChecklistModal = useDisclosure(); // Mobil nézetben a lista megjelenítése
   
   const isMobile = useBreakpointValue({ base: true, lg: false });
 
@@ -222,7 +217,7 @@ const UtReszletekOldal: React.FC = () => {
     } catch (err) { toast({ title: "Hiba", status: "error" }); }
   };
 
-  const handleAddChecklistItem = () => { setNewItemName(""); checklistModal.onOpen(); };
+  const handleAddChecklistItem = () => { setNewItemName(""); checklistAddModal.onOpen(); };
   const confirmAddChecklistItem = async () => {
     if (!id) return;
     const name = newItemName.trim();
@@ -236,7 +231,7 @@ const UtReszletekOldal: React.FC = () => {
       }
       const createdItem = await createListaElem(listaId!, { megnevezes: name });
       setChecklist((prev) => [...prev, { id: createdItem.elem_id, text: createdItem.megnevezes, checked: false }]);
-      checklistModal.onClose();
+      checklistAddModal.onClose();
     } catch (err) { toast({ title: "Hiba", status: "error" }); }
   };
 
@@ -313,6 +308,34 @@ const UtReszletekOldal: React.FC = () => {
   }, [sortedEvents]);
 
   // --- RENDERELÉS ---
+  
+  // Közös Checklist Komponens (hogy ne kelljen duplikálni)
+  const ChecklistContent = ({ isMobileView = false }) => (
+    <VStack align="stretch" spacing={3} w="100%">
+      <HStack mb={4} justify="center" spacing={3}>
+        <Button size="xs" bg="white" color="black" borderRadius="full" px={4} onClick={handleAddChecklistItem}>Hozzáadás</Button>
+        <Button size="xs" bg="white" color="black" borderRadius="full" px={4} onClick={handleDeleteChecked}>Törlés</Button>
+      </HStack>
+      {checklist.length === 0 && <Text textAlign="center" opacity={0.6} fontSize="sm">Nincs elem.</Text>}
+      {checklist.map((item) => (
+        <HStack key={item.id} spacing={3} onClick={() => handleToggleCheck(item.id)} cursor="pointer">
+          <Box 
+            w="24px" h="24px" 
+            borderRadius="6px" 
+            bg="#1E2A4F" 
+            display="flex" alignItems="center" justifyContent="center" flexShrink={0} 
+            border={item.checked ? "none" : `1px solid ${isMobileView ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.3)"}`}
+          >
+            {item.checked && <Icon as={CheckIcon} color="white" w={3} h={3} />}
+          </Box>
+          <Text fontSize="lg" color="#1E2A4F" fontWeight="500" textDecoration={item.checked ? "line-through" : "none"} opacity={item.checked ? 0.6 : 1}>
+            {item.text}
+          </Text>
+        </HStack>
+      ))}
+    </VStack>
+  );
+
   return (
     <Box
       minH="100vh"
@@ -325,18 +348,15 @@ const UtReszletekOldal: React.FC = () => {
     >
       <Container maxW="1200px" px={{ base: 4, md: 8 }}>
         
-        {/* Flex layout használata Grid helyett a jobb reszponzivitásért */}
         <Flex direction={{ base: "column", lg: "row" }} gap={10} align="flex-start">
           
           {/* === BAL OSZLOP (Timeline + Gombok) === */}
           <Box flex="2" w="100%">
             <VStack align="start" spacing={6} w="100%">
-              {/* Cím */}
               <Heading size={{ base: "xl", md: "3xl" }} fontWeight="700" textAlign={{ base: "center", md: "left" }} w="100%">
                 {tripTitle}
               </Heading>
               
-              {/* Napválasztó */}
               <Box
                 ref={daysScrollRef}
                 bg="rgba(255,255,255,0.15)"
@@ -344,11 +364,11 @@ const UtReszletekOldal: React.FC = () => {
                 p={1}
                 backdropFilter="blur(5px)"
                 overflowX="auto"
-                w="100%"
+                w={{ base: "100%", md: "auto" }}
                 whiteSpace="nowrap"
                 sx={{ '&::-webkit-scrollbar': { display: 'none' } }}
               >
-                <HStack spacing={2} minW="min-content">
+                <HStack spacing={0}>
                   {days.map(day => (
                     <Button
                       key={day}
@@ -370,7 +390,7 @@ const UtReszletekOldal: React.FC = () => {
                 </HStack>
               </Box>
 
-              {/* IDŐTARTAM KÁRTYA (MOBIL NÉZETBEN ITT JELENIK MEG) */}
+              {/* IDŐTARTAM KÁRTYA (MOBIL NÉZETBEN) */}
               <Box 
                 display={{ base: "block", lg: "none" }} 
                 bg="white" 
@@ -387,7 +407,6 @@ const UtReszletekOldal: React.FC = () => {
                 <Text fontSize="xs" color="gray.500">Tervek: <Text as="span" fontWeight="bold" color="#1E2A4F">{sortedEvents.length} elem</Text></Text>
               </Box>
 
-              {/* Vezérlő Gombok - Stack használata a reszponzív elrendezéshez */}
               <Stack
                 spacing={3}
                 w="100%"
@@ -399,25 +418,50 @@ const UtReszletekOldal: React.FC = () => {
                 <Button bg="#3B49DF" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#2b36a8" }} onClick={handleOpenNewEvent} rightIcon={<ChevronDownIcon />} px={6}>+ új esemény</Button>
               </Stack>
 
-              {/* Timeline Lista */}
               <Box position="relative" w="100%" pb={10}>
-                <Box position="absolute" left={{ base: "52px", md: "75px" }} top="0" bottom="0" w="2px" bg="rgba(255,255,255,0.3)" zIndex={0} minH="100%" />
+                {/* Vonal csak desktopon */}
+                <Box 
+                  display={{ base: "none", md: "block" }} 
+                  position="absolute" left="75px" top="0" bottom="0" w="2px" bg="rgba(255,255,255,0.3)" zIndex={0} minH="100%" 
+                />
+
                 <VStack spacing={6} align="stretch" position="relative" zIndex={1}>
-                  {sortedEvents.length === 0 && <Text ml={{ base: 16, md: 24 }} pt={4} fontSize="sm" opacity={0.8}>Nincs program.</Text>}
+                  {sortedEvents.length === 0 && <Text ml={{ base: 4, md: 24 }} pt={4} fontSize="sm" opacity={0.8}>Nincs program.</Text>}
+                  
                   {sortedEvents.map((event) => (
-                    <Flex key={event.id} align="flex-start" position="relative">
-                      <Text w={{ base: "45px", md: "60px" }} fontSize="xs" fontWeight="600" mt={4} opacity={0.7} textAlign="right" mr={{ base: 2, md: 6 }}>
+                    <Flex 
+                      key={event.id} 
+                      align={{ base: "stretch", md: "flex-start" }} 
+                      direction={{ base: "column", md: "row" }}
+                      position="relative"
+                      mb={{ base: 4, md: 0 }}
+                    >
+                      <Text 
+                        w={{ base: "auto", md: "60px" }} 
+                        fontSize={{ base: "sm", md: "xs" }} 
+                        fontWeight="600" 
+                        mt={{ base: 0, md: 4 }} 
+                        mb={{ base: 1, md: 0 }}
+                        opacity={0.8} 
+                        textAlign={{ base: "left", md: "right" }} 
+                        mr={{ base: 0, md: 6 }}
+                      >
                         {event.timeStart}
                       </Text>
-                      <Box position="absolute" left={{ base: "48px", md: "71px" }} top="22px" w="10px" h="10px" bg="rgba(255,255,255,0.5)" borderRadius="full" />
+
+                      <Box 
+                        display={{ base: "none", md: "block" }}
+                        position="absolute" left="71px" top="22px" w="10px" h="10px" bg="rgba(255,255,255,0.5)" borderRadius="full" 
+                      />
+
                       <Box {...whiteCardStyle} minH="80px">
                         <Heading size="md" mb={1} color="#1E2A4F">{event.title}</Heading>
                         <Text fontSize="sm" color="gray.500">{event.timeStart} - {event.timeEnd}</Text>
-                        <HStack mt={3} spacing={2}>
+                        <HStack mt={3} spacing={2} justify={{ base: "flex-end", md: "flex-start" }}>
                           <IconButton aria-label="Edit" icon={<EditIcon />} size="xs" onClick={() => handleEditEvent(event)} />
                           <IconButton aria-label="Delete" icon={<DeleteIcon />} size="xs" colorScheme="red" onClick={() => void handleDeleteEvent(event.id)} />
                         </HStack>
-                        <Box h="1px" bg="gray.300" mt={6} w="100%" />
+                        <Box h="1px" bg="gray.300" mt={6} w="100%" display={{ base: "none", md: "block" }} />
                       </Box>
                     </Flex>
                   ))}
@@ -427,12 +471,10 @@ const UtReszletekOldal: React.FC = () => {
             </VStack>
           </Box>
 
-          {/* === JOBB OSZLOP (Desktop: Info + Checklist, Mobil: Checklist alul) === */}
-          <Box flex="1" w="100%">
+          {/* === JOBB OSZLOP (Csak Desktopon) === */}
+          <Box display={{ base: "none", lg: "block" }} flex="1" w="100%">
             <VStack spacing={6} align="stretch">
-              
-              {/* Időtartam kártya (CSAK DESKTOPON) */}
-              <Box display={{ base: "none", lg: "block" }} {...glassStyleCommon} p={6}>
+              <Box {...glassStyleCommon} p={6}>
                 <Box bg="#F7FAFC" borderRadius="xl" p={6} color="#2D3748" boxShadow="sm">
                   <Heading size="sm" color="#1E2A4F" mb={2}>Időtartam összesen</Heading>
                   <Text fontSize="md" color="gray.500" mb={4}>{totalDurationString}</Text>
@@ -442,47 +484,52 @@ const UtReszletekOldal: React.FC = () => {
                 </Box>
               </Box>
 
-              {/* Ellenőrzőlista (Mobilon Sárga, Desktopon Kék) */}
-              <Box 
-                sx={isMobile ? mobileChecklistStyle : glassStyleCommon} 
-                p={6}
-                w="100%"
-              >
-                <Heading size="lg" mb={4} textAlign="center" color={isMobile ? "#2D3748" : "white"}>
-                  Ellenőrzőlista
-                </Heading>
-                <HStack mb={6} justify="center" spacing={3}>
-                  <Button size="xs" bg={isMobile ? "#1E2A4F" : "white"} color={isMobile ? "white" : "black"} borderRadius="full" px={4} onClick={handleAddChecklistItem}>Hozzáadás</Button>
-                  <Button size="xs" bg={isMobile ? "#1E2A4F" : "white"} color={isMobile ? "white" : "black"} borderRadius="full" px={4} onClick={handleDeleteChecked}>Törlés</Button>
-                </HStack>
-                <VStack align="stretch" spacing={3}>
-                  {checklist.length === 0 && <Text textAlign="center" opacity={0.6} fontSize="sm">Nincs elem.</Text>}
-                  {checklist.map((item) => (
-                    <HStack key={item.id} spacing={3} onClick={() => handleToggleCheck(item.id)} cursor="pointer">
-                      <Box 
-                        w="24px" h="24px" 
-                        borderRadius="6px" 
-                        bg="#1E2A4F" 
-                        display="flex" alignItems="center" justifyContent="center" flexShrink={0} 
-                        border={item.checked ? "none" : `1px solid ${isMobile ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.3)"}`}
-                      >
-                        {item.checked && <Icon as={CheckIcon} color="white" w={3} h={3} />}
-                      </Box>
-                      <Text fontSize="lg" color={isMobile ? "#1E2A4F" : "white"} fontWeight="500" textDecoration={item.checked ? "line-through" : "none"} opacity={item.checked ? 0.6 : 1}>
-                        {item.text}
-                      </Text>
-                    </HStack>
-                  ))}
-                </VStack>
+              <Box {...glassStyleCommon} p={6} w="100%">
+                <Heading size="lg" mb={4} textAlign="center" color="white">Ellenőrzőlista</Heading>
+                <ChecklistContent isMobileView={false} />
               </Box>
-
             </VStack>
           </Box>
 
         </Flex>
       </Container>
 
-      {/* Modals */}
+      {/* --- MOBIL FAB (Floating Action Button) --- */}
+      <IconButton
+        aria-label="Ellenőrzőlista megnyitása"
+        icon={<CheckIcon />}
+        isRound
+        size="lg"
+        bg="#F6C95C" // Sárga szín a képről
+        color="#1E2A4F"
+        position="fixed"
+        bottom="20px"
+        right="20px"
+        zIndex={100}
+        shadow="xl"
+        display={{ base: "flex", lg: "none" }} // Csak mobilon
+        onClick={mobileChecklistModal.onOpen}
+      />
+
+      {/* --- MOBIL CHECKLIST MODAL --- */}
+      <Modal isOpen={mobileChecklistModal.isOpen} onClose={mobileChecklistModal.onClose} isCentered size="sm">
+        <ModalOverlay backdropFilter="blur(5px)" />
+        <ModalContent 
+          bg="#F6C95C" // Sárga háttér a modalnak is
+          borderRadius="2xl" 
+          boxShadow="xl"
+          maxH="80vh"
+          overflow="hidden"
+        >
+          <ModalHeader color="#1E2A4F" textAlign="center">Ellenőrzőlista</ModalHeader>
+          <ModalCloseButton color="#1E2A4F" />
+          <ModalBody pb={6} overflowY="auto">
+             <ChecklistContent isMobileView={true} />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Program Modal */}
       <Modal isOpen={isOpen} onClose={onClose} isCentered size={{ base: "xs", md: "md" }}>
         <ModalOverlay backdropFilter="blur(5px)" />
         <ModalContent borderRadius="xl">
@@ -498,12 +545,13 @@ const UtReszletekOldal: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={checklistModal.isOpen} onClose={checklistModal.onClose} isCentered size={{ base: "xs", md: "md" }}>
+      {/* Checklist Add Modal */}
+      <Modal isOpen={checklistAddModal.isOpen} onClose={checklistAddModal.onClose} isCentered size={{ base: "xs", md: "md" }}>
         <ModalOverlay backdropFilter="blur(5px)" />
         <ModalContent borderRadius="xl">
           <ModalHeader>Új elem</ModalHeader>
           <ModalBody><Input placeholder="Pl. Naptej" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} /></ModalBody>
-          <ModalFooter><Button onClick={checklistModal.onClose} mr={3}>Mégse</Button><Button colorScheme="blue" onClick={() => void confirmAddChecklistItem()}>Hozzáadás</Button></ModalFooter>
+          <ModalFooter><Button onClick={checklistAddModal.onClose} mr={3}>Mégse</Button><Button colorScheme="blue" onClick={() => void confirmAddChecklistItem()}>Hozzáadás</Button></ModalFooter>
         </ModalContent>
       </Modal>
 
