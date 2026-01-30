@@ -146,16 +146,21 @@ export default function NavigaciosSav() {
       >
         <Flex align="center" justify="space-between" maxW="1440px" mx="auto">
           <Flex flex={{ base: "0", md: "1" }} align="center">
-            <Text
-              fontSize="32px"
-              fontWeight="700"
-              lineHeight="110%"
-              letterSpacing="-0.02em"
-              textShadow="0 4px 4px rgba(0,0,0,0.25)"
-              cursor="pointer"
+            <ChakraLink
+              as={RouterLink}
+              to="/"
+              _hover={{ textDecoration: "none" }}
             >
-              GuideMate
-            </Text>
+              <Text
+                fontSize="32px"
+                fontWeight="700"
+                lineHeight="110%"
+                letterSpacing="-0.02em"
+                textShadow="0 4px 4px rgba(0,0,0,0.25)"
+              >
+                GuideMate
+              </Text>
+            </ChakraLink>
           </Flex>
 
           <HStack
