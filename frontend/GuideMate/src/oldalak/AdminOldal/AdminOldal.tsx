@@ -177,7 +177,6 @@ const AdminOldal: React.FC = () => {
               <StatCard
                 title="Utazások"
                 value={stats.utazasok.osszesen}
-                subtitle={`Aktív: ${stats.utazasok.aktiv}, Lezárt: ${stats.utazasok.lezart}`}
               />
               <StatCard title="Programok" value={stats.programok.osszesen} />
               <StatCard title="Foglalások" value={stats.foglalasok.osszesen} />
