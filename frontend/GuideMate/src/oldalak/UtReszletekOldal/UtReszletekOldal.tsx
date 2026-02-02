@@ -21,6 +21,7 @@ import {
   FormControl,
   FormLabel,
   Input,
+  Textarea,
   Stack,
   useBreakpointValue,
   Flex,
@@ -47,6 +48,7 @@ type EventItem = {
   timeStart: string;
   timeEnd: string;
   title: string;
+  description?: string | null;
 };
 
 const DEFAULT_TRIP_TITLE = "Párizsi kirándulás";
@@ -146,6 +148,7 @@ const UtReszletekOldal: React.FC = () => {
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventStart, setNewEventStart] = useState("");
   const [newEventEnd, setNewEventEnd] = useState("");
+  const [newEventDescription, setNewEventDescription] = useState("");
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const daysScrollRef = useRef<HTMLDivElement | null>(null);
@@ -191,8 +194,8 @@ const UtReszletekOldal: React.FC = () => {
     } catch (err) { toast({ title: "Hiba", status: "error" }); }
   };
 
-  const handleOpenNewEvent = () => { setEditingEventId(null); setNewEventTitle(""); setNewEventStart(""); setNewEventEnd(""); onOpen(); };
-  const handleEditEvent = (event: EventItem) => { setEditingEventId(event.id); setNewEventTitle(event.title); setNewEventStart(event.timeStart); setNewEventEnd(event.timeEnd); onOpen(); };
+  const handleOpenNewEvent = () => { setEditingEventId(null); setNewEventTitle(""); setNewEventStart(""); setNewEventEnd(""); setNewEventDescription(""); onOpen(); };
+  const handleEditEvent = (event: EventItem) => { setEditingEventId(event.id); setNewEventTitle(event.title); setNewEventStart(event.timeStart); setNewEventEnd(event.timeEnd); setNewEventDescription(event.description ?? ""); onOpen(); };
   
   const handleDeleteEvent = async (eventId: number) => {
     if (!id) return;
@@ -206,13 +209,14 @@ const UtReszletekOldal: React.FC = () => {
     try {
       const safeEnd = newEventEnd || newEventStart;
       if (editingEventId) {
-        await updateProgram(editingEventId, { nev: newEventTitle.trim(), kezdo_ido: newEventStart, veg_ido: safeEnd });
+        await updateProgram(editingEventId, { nev: newEventTitle.trim(), leiras: newEventDescription.trim() ? newEventDescription.trim() : undefined, kezdo_ido: newEventStart, veg_ido: safeEnd });
       } else {
         const napDatum = addDays(tripStart, activeDay - 1);
-        await createProgram(Number(id), { nev: newEventTitle.trim(), nap_datum: napDatum, kezdo_ido: newEventStart, veg_ido: safeEnd });
+        await createProgram(Number(id), { nev: newEventTitle.trim(), leiras: newEventDescription.trim() ? newEventDescription.trim() : undefined, nap_datum: napDatum, kezdo_ido: newEventStart, veg_ido: safeEnd });
       }
       await loadTrip(Number(id));
       onClose();
+      setNewEventDescription("");
       toast({ title: "Siker", status: "success" });
     } catch (err) { toast({ title: "Hiba", status: "error" }); }
   };
@@ -262,7 +266,7 @@ const UtReszletekOldal: React.FC = () => {
       const napDatum = program.nap_datum ?? baseDate;
       const nap = parseDateOnly(napDatum);
       const dayId = base && nap ? Math.floor((nap.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 1;
-      return { id: program.azonosito, dayId, timeStart: program.kezdo_ido, timeEnd: program.veg_ido, title: program.nev };
+      return { id: program.azonosito, dayId, timeStart: program.kezdo_ido, timeEnd: program.veg_ido, title: program.nev, description: program.leiras };
     });
     setEvents(mappedEvents);
   };
@@ -364,11 +368,18 @@ const UtReszletekOldal: React.FC = () => {
                 p={1}
                 backdropFilter="blur(5px)"
                 overflowX="auto"
-                w={{ base: "100%", md: "auto" }}
+                overflowY="hidden"
+                w={{ base: "100%", md: "560px" }}
+                maxW="100%"
                 whiteSpace="nowrap"
-                sx={{ '&::-webkit-scrollbar': { display: 'none' } }}
+                scrollbarWidth="auto"
+                sx={{
+                  '&::-webkit-scrollbar': { height: '6px' },
+                  '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.4)', borderRadius: '999px' },
+                  '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.1)' },
+                }}
               >
-                <HStack spacing={0}>
+                <HStack spacing={0} flexWrap="nowrap" minW="max-content">
                   {days.map(day => (
                     <Button
                       key={day}
@@ -379,6 +390,7 @@ const UtReszletekOldal: React.FC = () => {
                       borderRadius="md"
                       size="sm"
                       px={6}
+                      minW="72px"
                       flexShrink={0}
                       _hover={{ bg: activeDay === day ? "#2b36a8" : "rgba(255,255,255,0.1)" }}
                       fontWeight="500"
@@ -418,54 +430,75 @@ const UtReszletekOldal: React.FC = () => {
                 <Button bg="#3B49DF" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#2b36a8" }} onClick={handleOpenNewEvent} rightIcon={<ChevronDownIcon />} px={6}>+ új esemény</Button>
               </Stack>
 
-              <Box position="relative" w="100%" pb={10}>
-                {/* Vonal csak desktopon */}
-                <Box 
-                  display={{ base: "none", md: "block" }} 
-                  position="absolute" left="75px" top="0" bottom="0" w="2px" bg="rgba(255,255,255,0.3)" zIndex={0} minH="100%" 
-                />
+              <Box position="relative" w="100%">
+                <Box
+                  position="relative"
+                  maxH={{ base: "520px", md: "640px", lg: "680px" }}
+                  overflowY="auto"
+                  pr={2}
+                  pb={2}
+                  scrollbarWidth="thin"
+                  sx={{
+                    '&::-webkit-scrollbar': { width: '6px' },
+                    '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.35)', borderRadius: '999px' },
+                    '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.12)' },
+                  }}
+                >
+                  <Box position="relative" minH="100%">
+                    {/* Vonal csak desktopon */}
+                    <Box 
+                      display={{ base: "none", md: "block" }} 
+                      position="absolute" left="75px" top="0" bottom="0" w="3px" bg="rgba(255,255,255,0.3)" zIndex={0} 
+                    />
 
-                <VStack spacing={6} align="stretch" position="relative" zIndex={1}>
-                  {sortedEvents.length === 0 && <Text ml={{ base: 4, md: 24 }} pt={4} fontSize="sm" opacity={0.8}>Nincs program.</Text>}
-                  
-                  {sortedEvents.map((event) => (
-                    <Flex 
-                      key={event.id} 
-                      align={{ base: "stretch", md: "flex-start" }} 
-                      direction={{ base: "column", md: "row" }}
-                      position="relative"
-                      mb={{ base: 4, md: 0 }}
-                    >
-                      <Text 
-                        w={{ base: "auto", md: "60px" }} 
-                        fontSize={{ base: "sm", md: "xs" }} 
-                        fontWeight="600" 
-                        mt={{ base: 0, md: 4 }} 
-                        mb={{ base: 1, md: 0 }}
-                        opacity={0.8} 
-                        textAlign={{ base: "left", md: "right" }} 
-                        mr={{ base: 0, md: 6 }}
-                      >
-                        {event.timeStart}
-                      </Text>
+                    <VStack spacing={{ base: 3, md: 6 }} align="stretch" position="relative" zIndex={1} pb={2}>
+                      {sortedEvents.length === 0 && <Text ml={{ base: 4, md: 24 }} pt={4} fontSize="sm" opacity={0.8}>Nincs program.</Text>}
+                      
+                      {sortedEvents.map((event) => (
+                        <Flex 
+                          key={event.id} 
+                          align={{ base: "stretch", md: "flex-start" }} 
+                          direction={{ base: "column", md: "row" }}
+                          position="relative"
+                          mb={{ base: 2, md: 0 }}
+                        >
+                          <Text 
+                            w={{ base: "auto", md: "60px" }} 
+                            fontSize={{ base: "sm", md: "xs" }} 
+                            fontWeight="600" 
+                            mt={{ base: 0, md: 4 }} 
+                            mb={{ base: 1, md: 0 }}
+                            opacity={0.8} 
+                            textAlign={{ base: "left", md: "right" }} 
+                            mr={{ base: 0, md: 8 }}
+                          >
+                            {event.timeStart}
+                          </Text>
 
-                      <Box 
-                        display={{ base: "none", md: "block" }}
-                        position="absolute" left="71px" top="22px" w="10px" h="10px" bg="rgba(255,255,255,0.5)" borderRadius="full" 
-                      />
+                          <Box 
+                            display={{ base: "none", md: "block" }}
+                            position="absolute" left="71px" top="22px" w="10px" h="10px" bg="rgba(255,255,255,0.5)" borderRadius="full" 
+                          />
 
-                      <Box {...whiteCardStyle} minH="80px">
-                        <Heading size="md" mb={1} color="#1E2A4F">{event.title}</Heading>
-                        <Text fontSize="sm" color="gray.500">{event.timeStart} - {event.timeEnd}</Text>
-                        <HStack mt={3} spacing={2} justify={{ base: "flex-end", md: "flex-start" }}>
-                          <IconButton aria-label="Edit" icon={<EditIcon />} size="xs" onClick={() => handleEditEvent(event)} />
-                          <IconButton aria-label="Delete" icon={<DeleteIcon />} size="xs" colorScheme="red" onClick={() => void handleDeleteEvent(event.id)} />
-                        </HStack>
-                        <Box h="1px" bg="gray.300" mt={6} w="100%" display={{ base: "none", md: "block" }} />
-                      </Box>
-                    </Flex>
-                  ))}
-                </VStack>
+                        <Box {...whiteCardStyle} minH="80px">
+                          <Heading size="md" mb={1} color="#1E2A4F">{event.title}</Heading>
+                          <Text fontSize="sm" color="gray.500">{event.timeStart} - {event.timeEnd}</Text>
+                          {event.description && (
+                            <Text fontSize="sm" color="gray.600" mt={2} whiteSpace="pre-wrap">
+                              {event.description}
+                            </Text>
+                          )}
+                          <HStack mt={3} spacing={2} justify={{ base: "flex-end", md: "flex-start" }}>
+                            <IconButton aria-label="Edit" icon={<EditIcon />} size="xs" onClick={() => handleEditEvent(event)} />
+                            <IconButton aria-label="Delete" icon={<DeleteIcon />} size="xs" colorScheme="red" onClick={() => void handleDeleteEvent(event.id)} />
+                          </HStack>
+                            <Box h="1px" bg="gray.300" mt={6} w="100%" display={{ base: "none", md: "block" }} />
+                          </Box>
+                        </Flex>
+                      ))}
+                    </VStack>
+                  </Box>
+                </Box>
               </Box>
 
             </VStack>
@@ -538,6 +571,7 @@ const UtReszletekOldal: React.FC = () => {
           <ModalBody>
             <VStack spacing={4}>
               <FormControl><FormLabel>Cím</FormLabel><Input value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} /></FormControl>
+              <FormControl><FormLabel>Leírás</FormLabel><Textarea value={newEventDescription} onChange={(e) => setNewEventDescription(e.target.value)} rows={3} /></FormControl>
               <HStack><FormControl><FormLabel>Kezdés</FormLabel><Input type="time" value={newEventStart} onChange={(e) => setNewEventStart(e.target.value)} /></FormControl><FormControl><FormLabel>Vég</FormLabel><Input type="time" value={newEventEnd} onChange={(e) => setNewEventEnd(e.target.value)} /></FormControl></HStack>
             </VStack>
           </ModalBody>

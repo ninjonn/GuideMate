@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box,
   Collapse,
   Input,
   InputGroup,
   InputRightElement,
+  Select,
   VStack,
   HStack,
   Text,
@@ -16,8 +17,18 @@ import {
   useToast,
   FormControl,
   FormLabel,
+  Divider,
+  Textarea,
   Stack,
   useBreakpointValue,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
 } from '@chakra-ui/react';
 import { SearchIcon, TimeIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
@@ -33,6 +44,8 @@ import {
   type CoordinatesResult,
   type Place 
 } from '../../lib/opentripmap';
+import { listUtazasok, type UtazasListItem } from '../../features/utazas/utazas.api';
+import { createProgram } from '../../features/program/program.api';
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -80,6 +93,31 @@ const LIMIT = 30;
 const DEFAULT_RADIUS = 8000;
 const MIN_RADIUS = 1000;
 const MAX_RADIUS = 12000;
+
+const parseDateOnly = (dateStr: string) => {
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3) return null;
+  const [year, month, day] = parts;
+  if (!year || !month || !day) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const formatDateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
+const calcDayCount = (start: string, end: string): number => {
+  const startDate = parseDateOnly(start);
+  const endDate = parseDateOnly(end);
+  if (!startDate || !endDate) return 0;
+  const diff = endDate.getTime() - startDate.getTime();
+  return Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)) + 1);
+};
+
+const addDays = (start: string, days: number) => {
+  const d = parseDateOnly(start);
+  if (!d) return start;
+  d.setUTCDate(d.getUTCDate() + days);
+  return formatDateOnly(d);
+};
 
 const getViewportRadius = (map: L.Map) => {
   const bounds = map.getBounds();
@@ -148,6 +186,7 @@ const TerkepOldal: React.FC = () => {
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const addProgramModal = useDisclosure();
 
   const shouldFlyRef = useRef(false);
   const mapRadiusRef = useRef(DEFAULT_RADIUS);
@@ -155,6 +194,12 @@ const TerkepOldal: React.FC = () => {
 
   const [formTitle, setFormTitle] = useState("");
   const [formDesc, setFormDesc] = useState("");
+  const [formStartTime, setFormStartTime] = useState("09:00");
+  const [formEndTime, setFormEndTime] = useState("");
+  const [trips, setTrips] = useState<UtazasListItem[]>([]);
+  const [tripsLoading, setTripsLoading] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<number | ''>('');
+  const [selectedDay, setSelectedDay] = useState<number | ''>('');
 
   useEffect(() => {
     if (isMobile) {
@@ -306,6 +351,68 @@ const TerkepOldal: React.FC = () => {
     setOffset(0);
     setFormTitle(place.name);
     setFormDesc(place.address ?? place.kinds);
+    setFormStartTime("09:00");
+    setFormEndTime("");
+  };
+
+  const selectedTrip = useMemo(
+    () => trips.find((t) => t.azonosito === selectedTripId) ?? null,
+    [trips, selectedTripId],
+  );
+
+  const dayOptions = useMemo(() => {
+    if (!selectedTrip) return [];
+    const count = calcDayCount(selectedTrip.kezdo_datum, selectedTrip.veg_datum);
+    return Array.from({ length: count }, (_, idx) => idx + 1);
+  }, [selectedTrip]);
+
+  useEffect(() => {
+    if (!selectedTrip) return;
+    setSelectedDay(1);
+  }, [selectedTripId, selectedTrip]);
+
+  const handleOpenAddModal = async () => {
+    addProgramModal.onOpen();
+    if (trips.length > 0 || tripsLoading) return;
+    setTripsLoading(true);
+    try {
+      const res = await listUtazasok({ limit: 200, rendez: "datum" });
+      setTrips(res.utazasok);
+      if (res.utazasok[0]) {
+        setSelectedTripId(res.utazasok[0].azonosito);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Ismeretlen hiba";
+      toast({ title: "Hiba", description: msg, status: "error" });
+    } finally {
+      setTripsLoading(false);
+    }
+  };
+
+  const handleAddProgram = async () => {
+    if (!selectedTrip || !selectedTripId || !selectedDay) {
+      toast({ title: "Hiányzó adatok", description: "Válassz utazást és napot.", status: "warning" });
+      return;
+    }
+    if (!formTitle.trim() || !formStartTime) {
+      toast({ title: "Hiányzó adatok", description: "Adj meg címet és kezdés időt.", status: "warning" });
+      return;
+    }
+    try {
+      const napDatum = addDays(selectedTrip.kezdo_datum, Number(selectedDay) - 1);
+      await createProgram(Number(selectedTripId), {
+        nev: formTitle.trim(),
+        leiras: formDesc.trim() ? formDesc.trim() : undefined,
+        nap_datum: napDatum,
+        kezdo_ido: formStartTime,
+        veg_ido: formEndTime || formStartTime,
+      });
+      toast({ title: "Program hozzáadva", status: "success" });
+      addProgramModal.onClose();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Ismeretlen hiba";
+      toast({ title: "Hiba", description: msg, status: "error" });
+    }
   };
 
   const handleMapMove = (center: [number, number], radius: number) => {
@@ -570,50 +677,123 @@ const TerkepOldal: React.FC = () => {
                 </Box>
               )}
 
-              <Heading size="md" textAlign="center" color="#1E2A4F" mb={4}>
-                Út hozzáadása
-              </Heading>
+              <VStack spacing={3} align="stretch">
+                <Text fontSize="xs" fontWeight="700" color="#1E2A4F" letterSpacing="0.08em" textTransform="uppercase">
+                  Kiválasztott hely
+                </Text>
 
-              <VStack spacing={3}>
-                <Stack w="100%" spacing={3} direction={{ base: "column", md: "row" }}>
-                  <FormControl>
-                    <FormLabel fontSize="xs" fontWeight="bold" mb={1}>Cím</FormLabel>
-                    <Input size="sm" bg="white" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel fontSize="xs" fontWeight="bold" mb={1}>Leírás <Text as="span" fontSize="2xs" color="gray.500">*opcionális</Text></FormLabel>
-                    <Input size="sm" bg="white" value={formDesc} onChange={(e) => setFormDesc(e.target.value)} />
-                  </FormControl>
-                </Stack>
+                <Box bg="whiteAlpha.700" borderRadius="lg" p={3} border="1px solid rgba(0,0,0,0.06)">
+                  <Text fontSize="md" fontWeight="700" color="#1E2A4F" mb={1}>
+                    {selectedPlace.name}
+                  </Text>
+                  <Text fontSize="xs" color="gray.500" fontWeight="600" mb={1}>
+                    Cím
+                  </Text>
+                  <Text fontSize="sm" color="gray.600">
+                    {selectedPlace.address ?? selectedPlace.kinds}
+                  </Text>
+                  {selectedPlace.kinds && (
+                    <Text fontSize="xs" color="gray.500" mt={2}>
+                      Kategória: {selectedPlace.kinds}
+                    </Text>
+                  )}
+                </Box>
 
-                <Stack w="100%" spacing={3} direction={{ base: "column", md: "row" }}>
-                  <FormControl>
-                    <FormLabel fontSize="xs" fontWeight="bold" mb={1}>Kezdés</FormLabel>
-                    <InputGroup size="sm">
-                      <Input type="time" bg="white" defaultValue="12:00" />
-                      <InputRightElement><TimeIcon color="gray.500" /></InputRightElement>
-                    </InputGroup>
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel fontSize="xs" fontWeight="bold" mb={1}>Vég <Text as="span" fontSize="2xs" color="gray.500">*opcionális</Text></FormLabel>
-                    <InputGroup size="sm">
-                      <Input type="time" bg="white" defaultValue="14:00" />
-                      <InputRightElement><TimeIcon color="gray.500" /></InputRightElement>
-                    </InputGroup>
-                  </FormControl>
-                </Stack>
+                <Divider />
+
+                <Text fontSize="sm" color="gray.600" textAlign="center">
+                  Válaszd ki, melyik utazás és nap programjához add hozzá.
+                </Text>
 
                 <Stack w="100%" pt={2} spacing={3} direction="row">
                   <Button size="sm" flex={1} bg="white" color="#1E2A4F" onClick={() => setSelectedPlace(null)}>
                     Mégse
                   </Button>
-                  <Button size="sm" flex={1} bg="#1E2A4F" color="white" _hover={{ bg: "#151d36" }}>
+                  <Button size="sm" flex={1} bg="#1E2A4F" color="white" _hover={{ bg: "#151d36" }} onClick={handleOpenAddModal}>
                     Hozzáadás
                   </Button>
                 </Stack>
               </VStack>
             </Box>
           )}
+
+          <Modal isOpen={addProgramModal.isOpen} onClose={addProgramModal.onClose} isCentered size={{ base: "sm", md: "md" }}>
+            <ModalOverlay backdropFilter="blur(4px)" />
+            <ModalContent borderRadius="xl">
+              <ModalHeader>Program hozzáadása</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <VStack spacing={4} align="stretch">
+                  <FormControl isRequired>
+                    <FormLabel>Utazás</FormLabel>
+                    <Select
+                      placeholder={tripsLoading ? "Betöltés..." : "Válassz utazást"}
+                      value={selectedTripId ? String(selectedTripId) : ""}
+                      onChange={(e) => setSelectedTripId(Number(e.target.value))}
+                      isDisabled={tripsLoading}
+                    >
+                      {trips.map((trip) => (
+                        <option key={trip.azonosito} value={trip.azonosito}>
+                          {trip.cim} ({trip.kezdo_datum} - {trip.veg_datum})
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControl isRequired>
+                    <FormLabel>Nap</FormLabel>
+                    <Select
+                      placeholder="Válassz napot"
+                      value={selectedDay ? String(selectedDay) : ""}
+                      onChange={(e) => setSelectedDay(Number(e.target.value))}
+                      isDisabled={!selectedTrip}
+                    >
+                      {dayOptions.map((day) => (
+                        <option key={day} value={day}>
+                          {day}. nap
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <Stack direction={{ base: "column", md: "row" }} spacing={3}>
+                    <FormControl isRequired>
+                      <FormLabel>Kezdés</FormLabel>
+                      <InputGroup size="sm">
+                        <Input type="time" bg="white" value={formStartTime} onChange={(e) => setFormStartTime(e.target.value)} />
+                        <InputRightElement><TimeIcon color="gray.500" /></InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel>Vég</FormLabel>
+                      <InputGroup size="sm">
+                        <Input type="time" bg="white" value={formEndTime} onChange={(e) => setFormEndTime(e.target.value)} />
+                        <InputRightElement><TimeIcon color="gray.500" /></InputRightElement>
+                      </InputGroup>
+                    </FormControl>
+                  </Stack>
+
+                  <FormControl isRequired>
+                    <FormLabel>Cím</FormLabel>
+                    <Input bg="white" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel>Leírás</FormLabel>
+                    <Textarea bg="white" value={formDesc} onChange={(e) => setFormDesc(e.target.value)} rows={3} />
+                  </FormControl>
+                </VStack>
+              </ModalBody>
+              <ModalFooter>
+                <Button onClick={addProgramModal.onClose} mr={3}>
+                  Mégse
+                </Button>
+                <Button colorScheme="blue" onClick={handleAddProgram}>
+                  Mentés
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
 
         </Flex>
       </Box>
