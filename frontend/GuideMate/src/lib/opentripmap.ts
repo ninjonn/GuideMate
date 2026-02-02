@@ -1,4 +1,6 @@
 
+import { apiFetch } from "./api";
+
 // API KULCSOK
 const GEOAPIFY_API_KEY = "589fb45a2e214ff38069dffee50a6d77";
 const MAPBOX_API_KEY = "pk.eyJ1IjoidmlyYWdiZW5lZGVrMDYiLCJhIjoiY21rcDVuazBpMGQ3bTNkczkyaXgwcWtsaCJ9.8U__-HsFg4GAqf0Ispqo2g";
@@ -73,8 +75,54 @@ type GeoapifyFeature = {
   };
 };
 
+type ImageProxyResponse = {
+  url: string | null;
+};
+
 const NOMINATIM_HEADERS = {
   'User-Agent': 'TravelApp/1.0',
+};
+
+const IMAGE_FETCH_LIMIT = 12;
+
+const buildImageQuery = (place: Place) => {
+  const name = place.name?.trim();
+  if (!name) return '';
+  const address = place.address?.split(',')[0]?.trim();
+  if (address && !address.toLowerCase().includes(name.toLowerCase())) {
+    return `${name} ${address}`.trim();
+  }
+  return name;
+};
+
+const fetchPlaceImage = async (place: Place): Promise<string | undefined> => {
+  const query = buildImageQuery(place);
+  if (!query) return undefined;
+  try {
+    const res = await apiFetch<ImageProxyResponse>(
+      `/api/images?query=${encodeURIComponent(query)}`,
+      {},
+      false,
+    );
+    return res.url ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const enrichPlacesWithImages = async (places: Place[]) => {
+  if (places.length === 0) return places;
+  const limit = Math.min(IMAGE_FETCH_LIMIT, places.length);
+  const head = places.slice(0, limit);
+  const tail = places.slice(limit);
+  const enriched = await Promise.all(
+    head.map(async (place) => {
+      if (place.image) return place;
+      const image = await fetchPlaceImage(place);
+      return { ...place, image };
+    }),
+  );
+  return [...enriched, ...tail];
 };
 
 const searchNominatim = async (
@@ -310,7 +358,7 @@ export async function searchAndFilterPlaces(
         address: foundPlace.display_name,
         image: undefined,
       };
-      return [singlePlace];
+      return await enrichPlacesWithImages([singlePlace]);
     }
     
     const data = await res.json();
@@ -330,7 +378,7 @@ export async function searchAndFilterPlaces(
         address: foundPlace.display_name,
         image: undefined,
       };
-      return [singlePlace];
+      return await enrichPlacesWithImages([singlePlace]);
     }
     
     // SZŰRÉS: Csak azok a helyek, amelyek TARTALMAZZÁK a keresett szót
@@ -366,7 +414,7 @@ export async function searchAndFilterPlaces(
       .filter((p: Place) => p.name && p.name !== "Névtelen");
     
     console.log(`✅ Végleges lista: ${places.length}`);
-    return places;
+    return await enrichPlacesWithImages(places);
     
   } catch (error) {
     console.error("❌ Hely keresés hiba:", error);
@@ -442,8 +490,9 @@ export async function getPlaces(
       .filter((p: Place) => p.name && p.name !== "Névtelen");
 
     console.log(`✅ Szűrt találatok: ${places.length}`);
+    const itemsWithImages = await enrichPlacesWithImages(places);
     return {
-      items: places,
+      items: itemsWithImages,
       hasMore: rawCount >= limit,
     };
     
