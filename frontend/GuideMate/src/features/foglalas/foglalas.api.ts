@@ -1,10 +1,10 @@
 import { apiFetch } from "../../lib/api";
 
-export type FoglalasTipus = "repulo" | "busz" | "vonat" | "szallas";
+export type FoglalasTipus = "repulo" | "busz" | "vonat" | "auto" | "szallas";
 
 export type TravelFoglalas = {
   azonosito: number;
-  tipus: "repulo" | "busz" | "vonat";
+  tipus: "repulo" | "busz" | "vonat" | "auto";
   indulasi_hely: string;
   erkezesi_hely: string;
   indulasi_ido: string; // ISO
@@ -24,7 +24,7 @@ export type SzallasFoglalas = {
 export type Foglalas = TravelFoglalas | SzallasFoglalas;
 
 export type CreateTravelDto = {
-  tipus: "repulo" | "busz" | "vonat";
+  tipus: "repulo" | "busz" | "vonat" | "auto";
   indulasi_hely: string;
   erkezesi_hely: string;
   indulasi_ido: string; // ISO
