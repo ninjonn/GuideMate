@@ -10,9 +10,9 @@ export class UpdateFoglalasDto {
   // Foglalas tipusa, ha megadott.
   @IsOptional()
   @IsString()
-  @IsIn(['repulo', 'szallas', 'busz', 'vonat'])
+  @IsIn(['repulo', 'szallas', 'busz', 'vonat', 'auto'])
   @Transform(trimOptional)
-  tipus?: 'repulo' | 'szallas' | 'busz' | 'vonat';
+  tipus?: 'repulo' | 'szallas' | 'busz' | 'vonat' | 'auto';
 
   // Repulo: indulasi hely frissitese.
   @IsOptional()

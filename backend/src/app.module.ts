@@ -14,6 +14,7 @@ import { EllenorzoListaModule } from './ellenorzo-lista/ellenorzo-lista.module';
 import { ListaElemModule } from './lista-elem/lista-elem.module';
 import { PrismaModule } from './prisma.module';
 import { ImagesModule } from './images/images.module';
+import { GeoModule } from './geo/geo.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ImagesModule } from './images/images.module';
     EllenorzoListaModule,
     ListaElemModule,
     ImagesModule,
+    GeoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

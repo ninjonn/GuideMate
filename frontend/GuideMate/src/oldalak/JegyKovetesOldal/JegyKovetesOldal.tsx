@@ -35,6 +35,7 @@ const TIPUS_LABEL: Record<Foglalas["tipus"], string> = {
   repulo: "repülő",
   busz: "busz",
   vonat: "vonat",
+  auto: "autó",
   szallas: "szállás",
 };
 
@@ -248,7 +249,9 @@ const JegyKovetesOldal: React.FC = () => {
                     ) : (
                       <>
                         <Text>
-                          {f.indulasi_hely} <span style={{ opacity: 0.7, margin: "0 5px" }}>→</span> {f.erkezesi_hely}
+                          {f.indulasi_hely}{" "}
+                          <span style={{ opacity: 0.7, margin: "0 5px" }}>→</span>{" "}
+                          {f.erkezesi_hely}
                         </Text>
                         <Text color="whiteAlpha.900">Indulás: {formatDateTime(f.indulasi_ido)}</Text>
                         <Text color="whiteAlpha.900">Érkezés: {formatDateTime(f.erkezesi_ido)}</Text>
