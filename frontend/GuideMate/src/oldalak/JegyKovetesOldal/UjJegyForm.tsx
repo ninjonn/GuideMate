@@ -80,7 +80,11 @@ const UjJegyForm: React.FC = () => {
   const [vegDatum, setVegDatum] = useState<Date | null>(null);
 
   const isTravel = useMemo(
-    () => tipus === "repulo" || tipus === "busz" || tipus === "vonat",
+    () =>
+      tipus === "repulo" ||
+      tipus === "busz" ||
+      tipus === "vonat" ||
+      tipus === "auto",
     [tipus],
   );
 
@@ -140,12 +144,12 @@ const UjJegyForm: React.FC = () => {
           throw new Error("Töltsd ki a kötelező mezőket (helyek, idők)!");
         }
         dto = {
-          tipus: tipus as "repulo" | "busz" | "vonat",
+          tipus: tipus as "repulo" | "busz" | "vonat" | "auto",
           indulasi_hely: indulasiHely,
           erkezesi_hely: erkezesiHely,
           indulasi_ido: indulasiIdo.toISOString(),
           erkezesi_ido: erkezesiIdo.toISOString(),
-          jaratszam: jaratszam || null,
+          jaratszam: tipus === "auto" ? null : jaratszam || null,
         };
       } else {
         if (!hely || !cim || !kezdoDatum || !vegDatum) {
@@ -215,6 +219,7 @@ const UjJegyForm: React.FC = () => {
               <option value="repulo">Repülő</option>
               <option value="busz">Busz</option>
               <option value="vonat">Vonat</option>
+              <option value="auto">Autó</option>
               <option value="szallas">Szállás</option>
             </Select>
           </FormControl>
@@ -254,10 +259,12 @@ const UjJegyForm: React.FC = () => {
                 </FormControl>
               </HStack>
 
-              <FormControl>
-                <FormLabel {...labelStyle}>Járatszám (opcionális)</FormLabel>
-                <Input value={jaratszam} onChange={(e) => setJaratszam(e.target.value)} placeholder="A járatod száma..." {...glassInputStyle} px={4} />
-              </FormControl>
+              {tipus !== "auto" && (
+                <FormControl>
+                  <FormLabel {...labelStyle}>Járatszám (opcionális)</FormLabel>
+                  <Input value={jaratszam} onChange={(e) => setJaratszam(e.target.value)} placeholder="A járatod száma..." {...glassInputStyle} px={4} />
+                </FormControl>
+              )}
             </VStack>
           ) : (
             <VStack spacing={4}>

@@ -225,6 +225,11 @@ const formatDate = (date: Date): string => {
   return date.toISOString().slice(0, 10);
 };
 
-const isTravelType = (tipus: string): tipus is 'repulo' | 'busz' | 'vonat' => {
-  return tipus === 'repulo' || tipus === 'busz' || tipus === 'vonat';
+const isTravelType = (tipus: string): tipus is 'repulo' | 'busz' | 'vonat' | 'auto' => {
+  return (
+    tipus === 'repulo' ||
+    tipus === 'busz' ||
+    tipus === 'vonat' ||
+    tipus === 'auto'
+  );
 };

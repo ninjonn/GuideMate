@@ -443,11 +443,25 @@ const UtReszletekOldal: React.FC = () => {
                   w={{ base: "100%", md: "560px" }}
                   maxW="100%"
                   whiteSpace="nowrap"
-                  scrollbarWidth="auto"
                   sx={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255,255,255,0.75) rgba(255,255,255,0.15)',
+                    scrollbarGutter: 'stable',
                     '&::-webkit-scrollbar': { height: '6px' },
-                    '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.4)', borderRadius: '999px' },
-                    '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.1)' },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.3))',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(255,255,255,0.45)',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.4))',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'rgba(255,255,255,0.18)',
+                      borderRadius: '999px',
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.3)',
+                    },
                   }}
                 >
                   <HStack spacing={0} flexWrap="nowrap" minW="max-content">
@@ -536,11 +550,25 @@ const UtReszletekOldal: React.FC = () => {
                   overflowY="auto"
                   pr={2}
                   pb={2}
-                  scrollbarWidth="thin"
                   sx={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255,255,255,0.7) rgba(255,255,255,0.12)',
+                    scrollbarGutter: 'stable',
                     '&::-webkit-scrollbar': { width: '6px' },
-                    '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.35)', borderRadius: '999px' },
-                    '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.12)' },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.28))',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(255,255,255,0.4)',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                    },
+                    '&::-webkit-scrollbar-thumb:hover': {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.4))',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'rgba(255,255,255,0.16)',
+                      borderRadius: '999px',
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.3)',
+                    },
                   }}
                   data-export-scroll
                 >
