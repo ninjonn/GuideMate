@@ -33,6 +33,17 @@ export type FoglalasVonatItem = {
   jaratszam: string | null;
 };
 
+// Auto tipusu foglalas valasz forma.
+export type FoglalasAutoItem = {
+  azonosito: number;
+  tipus: 'auto';
+  indulasi_hely: string;
+  erkezesi_hely: string;
+  indulasi_ido: string;
+  erkezesi_ido: string;
+  jaratszam: string | null;
+};
+
 // Szallas tipusu foglalas valasz forma.
 export type FoglalasSzallasItem = {
   azonosito: number;
@@ -48,6 +59,7 @@ export type FoglalasListItem =
   | FoglalasRepuloItem
   | FoglalasBuszItem
   | FoglalasVonatItem
+  | FoglalasAutoItem
   | FoglalasSzallasItem;
 
 // Lista valasz, osszes elem szammal.
@@ -64,6 +76,7 @@ export type FoglalasCreateResponse = {
   | FoglalasRepuloItem
   | FoglalasBuszItem
   | FoglalasVonatItem
+  | FoglalasAutoItem
   | FoglalasSzallasItem
 );
 
@@ -74,6 +87,7 @@ export type FoglalasUpdateResponse = {
   | FoglalasRepuloItem
   | FoglalasBuszItem
   | FoglalasVonatItem
+  | FoglalasAutoItem
   | FoglalasSzallasItem
 );
 
