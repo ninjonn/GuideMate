@@ -27,7 +27,7 @@ import {
   Flex,
   Icon,
 } from '@chakra-ui/react';
-import { AddIcon, ChevronDownIcon, CheckIcon, DeleteIcon, EditIcon } from '@chakra-ui/icons';
+import { AddIcon, ChevronDownIcon, CheckIcon, DeleteIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getUtazas, updateUtazas } from '../../features/utazas/utazas.api';
 import { createProgram, deleteProgram, updateProgram } from '../../features/program/program.api';
@@ -152,6 +152,7 @@ const UtReszletekOldal: React.FC = () => {
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const daysScrollRef = useRef<HTMLDivElement | null>(null);
+  const exportRef = useRef<HTMLDivElement | null>(null);
 
   // --- Handlerek ---
   const handleToggleCheck = async (id: number) => {
@@ -201,6 +202,75 @@ const UtReszletekOldal: React.FC = () => {
     if (!id) return;
     try { await deleteProgram(eventId); await loadTrip(Number(id)); toast({ title: "Törölve", status: "success" }); } 
     catch (err) { toast({ title: "Hiba", status: "error" }); }
+  };
+
+  const handleExportDay = async () => {
+    if (!exportRef.current) return;
+    const element = exportRef.current;
+    const prevOverflow = element.style.overflow;
+    const prevMaxHeight = element.style.maxHeight;
+    const hiddenEls: Array<{ el: HTMLElement; display: string }> = [];
+    const scrollEls: Array<{ el: HTMLElement; overflow: string; maxHeight: string; height: string }> = [];
+    const exportClass = 'export-mode-black-text';
+    let styleEl: HTMLStyleElement | null = null;
+    try {
+      const exportHides = element.querySelectorAll<HTMLElement>('[data-export-hide]');
+      exportHides.forEach((el) => {
+        hiddenEls.push({ el, display: el.style.display });
+        el.style.display = 'none';
+      });
+      const exportScrolls = element.querySelectorAll<HTMLElement>('[data-export-scroll]');
+      exportScrolls.forEach((el) => {
+        scrollEls.push({
+          el,
+          overflow: el.style.overflow,
+          maxHeight: el.style.maxHeight,
+          height: el.style.height,
+        });
+        el.style.overflow = 'visible';
+        el.style.maxHeight = 'none';
+        el.style.height = `${el.scrollHeight}px`;
+      });
+      element.classList.add(exportClass);
+      styleEl = document.createElement('style');
+      styleEl.textContent = `
+        .${exportClass}, .${exportClass} * {
+          color: #000 !important;
+        }
+      `;
+      document.head.appendChild(styleEl);
+      element.style.overflow = 'visible';
+      element.style.maxHeight = 'none';
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+      });
+      const link = document.createElement('a');
+      const safeTitle = (tripTitle || 'utazas').replace(/\s+/g, '_').toLowerCase();
+      link.download = `${safeTitle}_nap_${activeDay}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast({ title: "Exportálva", status: "success" });
+    } catch (err) {
+      toast({ title: "Nem sikerült exportálni", status: "error" });
+    } finally {
+      element.style.overflow = prevOverflow;
+      element.style.maxHeight = prevMaxHeight;
+      element.classList.remove(exportClass);
+      if (styleEl) {
+        styleEl.remove();
+      }
+      scrollEls.forEach(({ el, overflow, maxHeight, height }) => {
+        el.style.overflow = overflow;
+        el.style.maxHeight = maxHeight;
+        el.style.height = height;
+      });
+      hiddenEls.forEach(({ el, display }) => {
+        el.style.display = display;
+      });
+    }
   };
 
   const handleSaveEvent = async () => {
@@ -350,7 +420,7 @@ const UtReszletekOldal: React.FC = () => {
       pb={10}
       overflowX="hidden"
     >
-      <Container maxW="1200px" px={{ base: 4, md: 8 }}>
+      <Container maxW="1200px" px={{ base: 4, md: 8 }} ref={exportRef}>
         
         <Flex direction={{ base: "column", lg: "row" }} gap={10} align="flex-start">
           
@@ -361,46 +431,74 @@ const UtReszletekOldal: React.FC = () => {
                 {tripTitle}
               </Heading>
               
-              <Box
-                ref={daysScrollRef}
-                bg="rgba(255,255,255,0.15)"
-                borderRadius="lg"
-                p={1}
-                backdropFilter="blur(5px)"
-                overflowX="auto"
-                overflowY="hidden"
-                w={{ base: "100%", md: "560px" }}
-                maxW="100%"
-                whiteSpace="nowrap"
-                scrollbarWidth="auto"
-                sx={{
-                  '&::-webkit-scrollbar': { height: '6px' },
-                  '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.4)', borderRadius: '999px' },
-                  '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.1)' },
-                }}
-              >
-                <HStack spacing={0} flexWrap="nowrap" minW="max-content">
-                  {days.map(day => (
-                    <Button
-                      key={day}
-                      data-day={day}
-                      onClick={() => setActiveDay(day)}
-                      bg={activeDay === day ? "#3B49DF" : "transparent"}
-                      color="white"
-                      borderRadius="md"
-                      size="sm"
-                      px={6}
-                      minW="72px"
-                      flexShrink={0}
-                      _hover={{ bg: activeDay === day ? "#2b36a8" : "rgba(255,255,255,0.1)" }}
-                      fontWeight="500"
-                    >
-                      {day}. nap
-                    </Button>
-                  ))}
-                  <IconButton aria-label="Törlés" icon={<DeleteIcon boxSize={3} />} size="xs" variant="ghost" color="white" onClick={() => void handleDeleteDaysFrom(days.length)} ml={2} />
+              <HStack align="center" spacing={3} w="100%">
+                <Box
+                  ref={daysScrollRef}
+                  bg="rgba(255,255,255,0.15)"
+                  borderRadius="lg"
+                  p={1}
+                  backdropFilter="blur(5px)"
+                  overflowX="auto"
+                  overflowY="hidden"
+                  w={{ base: "100%", md: "560px" }}
+                  maxW="100%"
+                  whiteSpace="nowrap"
+                  scrollbarWidth="auto"
+                  sx={{
+                    '&::-webkit-scrollbar': { height: '6px' },
+                    '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.4)', borderRadius: '999px' },
+                    '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.1)' },
+                  }}
+                >
+                  <HStack spacing={0} flexWrap="nowrap" minW="max-content">
+                    {days.map(day => (
+                      <Button
+                        key={day}
+                        data-day={day}
+                        onClick={() => setActiveDay(day)}
+                        bg={activeDay === day ? "#3B49DF" : "transparent"}
+                        color="white"
+                        borderRadius="md"
+                        size="sm"
+                        px={6}
+                        minW="72px"
+                        flexShrink={0}
+                        _hover={{ bg: activeDay === day ? "#2b36a8" : "rgba(255,255,255,0.1)" }}
+                        fontWeight="500"
+                      >
+                        {day}. nap
+                      </Button>
+                    ))}
+                  </HStack>
+                </Box>
+
+                <HStack spacing={2} data-export-hide>
+                  <IconButton
+                    aria-label="Export"
+                    icon={<DownloadIcon boxSize={3} />}
+                    size="sm"
+                    variant="solid"
+                    bg="rgba(255,255,255,0.2)"
+                    border="1px solid rgba(255,255,255,0.35)"
+                    color="white"
+                    flexShrink={0}
+                    onClick={() => void handleExportDay()}
+                    _hover={{ bg: "rgba(255,255,255,0.3)" }}
+                  />
+                  <IconButton
+                    aria-label="Törlés"
+                    icon={<DeleteIcon boxSize={3} />}
+                    size="sm"
+                    variant="solid"
+                    bg="rgba(255,255,255,0.2)"
+                    border="1px solid rgba(255,255,255,0.35)"
+                    color="white"
+                    flexShrink={0}
+                    onClick={() => void handleDeleteDaysFrom(days.length)}
+                    _hover={{ bg: "rgba(255,255,255,0.3)" }}
+                  />
                 </HStack>
-              </Box>
+              </HStack>
 
               {/* IDŐTARTAM KÁRTYA (MOBIL NÉZETBEN) */}
               <Box 
@@ -424,6 +522,7 @@ const UtReszletekOldal: React.FC = () => {
                 w="100%"
                 mb={4}
                 direction={{ base: "column", md: "row" }}
+                data-export-hide
               >
                 <Button {...glassButtonStyle} w={{ base: "100%", md: "180px" }} onClick={handleBack}>Visszalépés</Button>
                 <Button bg="#1E2A4F" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#151d36" }} onClick={handleAddDay} px={6}>+ új nap hozzáadása</Button>
@@ -443,6 +542,7 @@ const UtReszletekOldal: React.FC = () => {
                     '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.35)', borderRadius: '999px' },
                     '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.12)' },
                   }}
+                  data-export-scroll
                 >
                   <Box position="relative" minH="100%">
                     {/* Vonal csak desktopon */}

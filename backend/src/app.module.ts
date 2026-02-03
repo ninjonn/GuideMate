@@ -13,6 +13,7 @@ import { HelyszinModule } from './helyszin/helyszin.module';
 import { EllenorzoListaModule } from './ellenorzo-lista/ellenorzo-lista.module';
 import { ListaElemModule } from './lista-elem/lista-elem.module';
 import { PrismaModule } from './prisma.module';
+import { ImagesModule } from './images/images.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PrismaModule } from './prisma.module';
     HelyszinModule,
     EllenorzoListaModule,
     ListaElemModule,
+    ImagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
