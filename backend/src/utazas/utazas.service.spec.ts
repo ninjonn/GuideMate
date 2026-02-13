@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { PrismaService } from 'src/prisma.service';
-import { ParticipantService } from 'src/participant.service';
 import { UtazasService } from './utazas.service';
 
 describe('UtazasService', () => {
@@ -25,6 +24,9 @@ describe('UtazasService', () => {
       findMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    programLatnivalo: {
+      deleteMany: jest.fn(),
+    },
     ellenorzoLista: {
       findMany: jest.fn(),
       deleteMany: jest.fn(),
@@ -35,13 +37,7 @@ describe('UtazasService', () => {
     $transaction: jest.fn(),
   };
 
-  const participantService = new ParticipantService(
-    prismaMock as unknown as PrismaService,
-  );
-  const service = new UtazasService(
-    prismaMock as unknown as PrismaService,
-    participantService,
-  );
+  const service = new UtazasService(prismaMock as unknown as PrismaService);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -234,21 +230,21 @@ describe('UtazasService', () => {
       utazas_id: 2,
       felhasznalo_id: 1,
     });
-    prismaMock.$transaction.mockImplementation(
-      (callback: (prisma: unknown) => Promise<unknown>) =>
-        callback({
-          program: {
-            findMany: jest.fn().mockResolvedValue([{ program_id: 11 }]),
-            deleteMany: jest.fn().mockResolvedValue({}),
-          },
-          ellenorzoLista: {
-            findMany: jest.fn().mockResolvedValue([{ lista_id: 22 }]),
-            deleteMany: jest.fn().mockResolvedValue({}),
-          },
-          listaElem: { deleteMany: jest.fn().mockResolvedValue({}) },
-          utazasResztvevo: { deleteMany: jest.fn().mockResolvedValue({}) },
-          utazas: { delete: jest.fn().mockResolvedValue({}) },
-        }),
+    prismaMock.$transaction.mockImplementation(async (callback) =>
+      callback({
+        program: {
+          findMany: jest.fn().mockResolvedValue([{ program_id: 11 }]),
+          deleteMany: jest.fn().mockResolvedValue({}),
+        },
+        programLatnivalo: { deleteMany: jest.fn().mockResolvedValue({}) },
+        ellenorzoLista: {
+          findMany: jest.fn().mockResolvedValue([{ lista_id: 22 }]),
+          deleteMany: jest.fn().mockResolvedValue({}),
+        },
+        listaElem: { deleteMany: jest.fn().mockResolvedValue({}) },
+        utazasResztvevo: { deleteMany: jest.fn().mockResolvedValue({}) },
+        utazas: { delete: jest.fn().mockResolvedValue({}) },
+      }),
     );
 
     const result = await service.deleteForUser(1, 2);
