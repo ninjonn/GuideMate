@@ -36,18 +36,6 @@ model UserAccessToken {
   @@index([felhasznalo_id])
 }
 
-model Helyszin {
-  helyszin_id  Int         @id @default(autoincrement())
-  orszag       String
-  varos        String
-  iranyitoszam String?
-  utca         String
-  hazszam      String?
-  szelesseg    Decimal?    @db.Decimal(10, 7)
-  hosszusag    Decimal?    @db.Decimal(10, 7)
-  latnivalok   Latnivalo[]
-}
-
 model Utazas {
   utazas_id   Int      @id @default(autoincrement())
   nev         String
@@ -73,18 +61,6 @@ model UtazasResztvevo {
   @@id([utazas_id, felhasznalo_id])
 }
 
-model Latnivalo {
-  latnivalo_id Int     @id @default(autoincrement())
-  helyszin_id  Int
-  nev          String
-  kategoria    String?
-  kep_url      String?
-  leiras       String?
-
-  helyszin         Helyszin           @relation(fields: [helyszin_id], references: [helyszin_id])
-  programLatnivalo ProgramLatnivalo[]
-}
-
 model Program {
   program_id  Int      @id @default(autoincrement())
   utazas_id   Int
@@ -95,20 +71,7 @@ model Program {
   veg_ido     String   @db.VarChar(5)
   letrehozva  DateTime @default(now())
 
-  utazas     Utazas             @relation(fields: [utazas_id], references: [utazas_id])
-  latnivalok ProgramLatnivalo[]
-}
-
-model ProgramLatnivalo {
-  program_id   Int
-  latnivalo_id Int
-  tipus        String
-  sorrend      Int
-
-  program   Program   @relation(fields: [program_id], references: [program_id])
-  latnivalo Latnivalo @relation(fields: [latnivalo_id], references: [latnivalo_id])
-
-  @@id([program_id, latnivalo_id])
+  utazas Utazas @relation(fields: [utazas_id], references: [utazas_id])
 }
 
 model Foglalas {
