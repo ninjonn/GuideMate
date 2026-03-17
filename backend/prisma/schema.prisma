@@ -20,7 +20,6 @@ model Felhasznalo {
   szerepkor        String            @default("felhasznalo")
   letrehozva       DateTime          @default(now())
   utazasResztvevok UtazasResztvevo[]
-  tokenek          UserAccessToken[]
   foglalasok       Foglalas[]
 }
 
