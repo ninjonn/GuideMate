@@ -1,17 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Box,
-  Button,
-  Center,
-  FormControl,
-  FormLabel,
-  Heading,
-  HStack,
-  Input,
-  Select,
-  VStack,
-  useToast,
-} from "@chakra-ui/react";
+import { Box, Center, Heading, VStack, useToast } from "@chakra-ui/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   createFoglalas,
@@ -21,37 +9,10 @@ import {
   type CreateFoglalasDto,
   type FoglalasTipus,
 } from "../../features/foglalas/foglalas.api";
-import ChakraDatePicker from "../../komponensek/ui/ChakraDatePicker";
-
-// --- Stílusok ---
-const glassInputStyle = {
-  bg: "rgba(255, 255, 255, 0.15)",
-  border: "1px solid rgba(255, 255, 255, 0.3)",
-  color: "white",
-  _placeholder: { color: "rgba(255, 255, 255, 0.7)" },
-  _focus: { 
-    bg: "rgba(255, 255, 255, 0.25)", 
-    borderColor: "#7BCBFF", 
-    boxShadow: "0 0 0 1px #7BCBFF" 
-  },
-  _hover: {
-    bg: "rgba(255, 255, 255, 0.2)",
-  },
-  borderRadius: "lg",
-  height: "48px",
-  fontSize: "15px",
-  width: "100%",
-  cursor: "pointer"
-};
-
-const labelStyle = {
-  color: "white",
-  fontSize: "13px",
-  fontWeight: "600",
-  mb: 1.5,
-  ml: 1,
-  opacity: 0.9
-};
+import UjJegyTipusValaszto from "./komponensek/UjJegyTipusValaszto";
+import UjJegyUtazasMezok from "./komponensek/UjJegyUtazasMezok";
+import UjJegySzallasMezok from "./komponensek/UjJegySzallasMezok";
+import UjJegyGombok from "./komponensek/UjJegyGombok";
 
 // --- FŐ FORLAP KOMPONENS ---
 const UjJegyForm: React.FC = () => {
@@ -205,113 +166,41 @@ const UjJegyForm: React.FC = () => {
             {isEdit ? "Jegy szerkesztése" : "Új jegy hozzáadása"}
           </Heading>
 
-          <FormControl>
-            <FormLabel {...labelStyle}>Utazás típusa</FormLabel>
-            <Select
-              value={tipus}
-              onChange={(e) => setTipus(e.target.value as FoglalasTipus)}
-              sx={{
-                ...glassInputStyle,
-                '> option': { background: '#232B5C', color: 'white' }
-              }}
-              iconColor="white"
-            >
-              <option value="repulo">Repülő</option>
-              <option value="busz">Busz</option>
-              <option value="vonat">Vonat</option>
-              <option value="auto">Autó</option>
-              <option value="szallas">Szállás</option>
-            </Select>
-          </FormControl>
+          <UjJegyTipusValaszto value={tipus} onChange={setTipus} />
 
           {isTravel ? (
-            <VStack spacing={4}>
-              <FormControl>
-                <FormLabel {...labelStyle}>Kiindulási hely</FormLabel>
-                <Input value={indulasiHely} onChange={(e) => setIndulasiHely(e.target.value)} placeholder="Pl. Budapest" {...glassInputStyle} px={4} />
-              </FormControl>
-
-              <FormControl>
-                <FormLabel {...labelStyle}>Érkezési hely</FormLabel>
-                <Input value={erkezesiHely} onChange={(e) => setErkezesiHely(e.target.value)} placeholder="Pl. Párizs" {...glassInputStyle} px={4} />
-              </FormControl>
-
-              <HStack spacing={3} w="100%">
-                <FormControl>
-                  <FormLabel {...labelStyle}>Indulás ideje</FormLabel>
-                  <ChakraDatePicker
-                    selectedDate={indulasiIdo}
-                    onChange={setIndulasiIdo}
-                    showTime={true}
-                    placeholder="Válassz időpontot"
-                  />
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel {...labelStyle}>Érkezés ideje</FormLabel>
-                  <ChakraDatePicker
-                    selectedDate={erkezesiIdo}
-                    onChange={setErkezesiIdo}
-                    showTime={true}
-                    placeholder="Válassz időpontot"
-                    minDate={indulasiIdo || undefined}
-                  />
-                </FormControl>
-              </HStack>
-
-              {tipus !== "auto" && (
-                <FormControl>
-                  <FormLabel {...labelStyle}>Járatszám (opcionális)</FormLabel>
-                  <Input value={jaratszam} onChange={(e) => setJaratszam(e.target.value)} placeholder="A járatod száma..." {...glassInputStyle} px={4} />
-                </FormControl>
-              )}
-            </VStack>
+            <UjJegyUtazasMezok
+              tipus={tipus}
+              indulasiHely={indulasiHely}
+              erkezesiHely={erkezesiHely}
+              indulasiIdo={indulasiIdo}
+              erkezesiIdo={erkezesiIdo}
+              jaratszam={jaratszam}
+              onIndulasiHely={setIndulasiHely}
+              onErkezesiHely={setErkezesiHely}
+              onIndulasiIdo={setIndulasiIdo}
+              onErkezesiIdo={setErkezesiIdo}
+              onJaratszam={setJaratszam}
+            />
           ) : (
-            <VStack spacing={4}>
-              <FormControl>
-                <FormLabel {...labelStyle}>Hely</FormLabel>
-                <Input value={hely} onChange={(e) => setHely(e.target.value)} placeholder="Pl. Hotel neve" {...glassInputStyle} px={4} />
-              </FormControl>
-
-              <FormControl>
-                <FormLabel {...labelStyle}>Cím</FormLabel>
-                <Input value={cim} onChange={(e) => setCim(e.target.value)} placeholder="Pl. Utca, házszám" {...glassInputStyle} px={4} />
-              </FormControl>
-
-              <HStack spacing={3} w="100%">
-                <FormControl>
-                  <FormLabel {...labelStyle}>Kezdő dátum</FormLabel>
-                  <ChakraDatePicker
-                    selectedDate={kezdoDatum}
-                    onChange={setKezdoDatum}
-                    showTime={false}
-                    placeholder="ÉÉÉÉ. HH. NN."
-                  />
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel {...labelStyle}>Vég dátum</FormLabel>
-                  <ChakraDatePicker
-                    selectedDate={vegDatum}
-                    onChange={setVegDatum}
-                    showTime={false}
-                    placeholder="ÉÉÉÉ. HH. NN."
-                    minDate={kezdoDatum || undefined}
-                  />
-                </FormControl>
-              </HStack>
-            </VStack>
+            <UjJegySzallasMezok
+              hely={hely}
+              cim={cim}
+              kezdoDatum={kezdoDatum}
+              vegDatum={vegDatum}
+              onHely={setHely}
+              onCim={setCim}
+              onKezdoDatum={setKezdoDatum}
+              onVegDatum={setVegDatum}
+            />
           )}
 
-          <HStack spacing={3} pt={4} justify="space-between">
-             <Button bg="white" color="#232B5C" height="48px" width="48%" fontWeight="600" borderRadius="lg" _hover={{ bg: "gray.200" }} onClick={() => navigate(-1)}>
-              Mégse
-            </Button>
-            
-            <Button bg="#232B5C" color="white" height="48px" width="48%" fontWeight="600" borderRadius="lg" _hover={{ filter: "brightness(1.2)" }} isLoading={loading || fetching} onClick={() => void onSubmit()} boxShadow="0 4px 12px rgba(0,0,0,0.2)">
-              {isEdit ? "Mentés" : "Hozzáadás"}
-            </Button>
-          </HStack>
+          <UjJegyGombok
+            isEdit={isEdit}
+            isLoading={loading || fetching}
+            onCancel={() => navigate(-1)}
+            onSave={() => void onSubmit()}
+          />
         </VStack>
       </Center>
     </Box>
