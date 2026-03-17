@@ -276,7 +276,10 @@ export class GeoService {
       return name.toLowerCase().includes(searchTermLower);
     });
 
-    const featuresToUse = filtered.length > 0 ? filtered : data.features.slice(0, 10);
+    if (filtered.length === 0) {
+      return [this.toSinglePlace(foundPlace)];
+    }
+    const featuresToUse = filtered;
     return featuresToUse
       .map((feature) => {
         const props = feature.properties;

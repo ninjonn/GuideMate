@@ -2,38 +2,18 @@ import {
   Box,
   Text,
   Heading,
-  Input,
-  InputGroup,
-  InputLeftElement,
   Button,
   Link,
   VStack,
-  FormControl,
   Center,
-  Icon,
   useToast,
 } from "@chakra-ui/react";
-import type { IconProps } from "@chakra-ui/react";
 import { EmailIcon, LockIcon } from "@chakra-ui/icons";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { register } from "../../features/auth/auth.api";
-
-// Személy ikon (Figma alapján)
-const PersonIcon = (props: IconProps) => (
-  <Icon
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </Icon>
-);
+import RegisztracioMezo from "./komponensek/RegisztracioMezo";
+import SzemelyIkon from "./komponensek/SzemelyIkon";
 
 const RegisztracioOldal: React.FC = () => {
   const [vezeteknev, setVezeteknev] = useState("");
@@ -150,120 +130,43 @@ const RegisztracioOldal: React.FC = () => {
 
             <VStack spacing={6} w="100%">
 
-              {/* Vezetéknév */}
-              <FormControl>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none" pt={2}>
-                    <PersonIcon color="white" boxSize={5} />
-                  </InputLeftElement>
-                  <Input
-                    type="text"
-                    placeholder="Vezetéknév"
-                    value={vezeteknev}
-                    onChange={(e) => setVezeteknev(e.target.value)}
-                    variant="flushed"
-                    borderBottom="1px solid rgba(255,255,255,0.5)"
-                    _placeholder={{ color: "#ffffffa0" }}
-                    _focus={{ borderColor: "white", boxShadow: "none" }}
-                    color="white"
-                    fontSize="lg"
-                    height="50px"
-                    pl={10}
-                  />
-                </InputGroup>
-              </FormControl>
+              <RegisztracioMezo
+                icon={<SzemelyIkon color="white" boxSize={5} />}
+                placeholder="Vezetéknév"
+                value={vezeteknev}
+                onChange={setVezeteknev}
+              />
 
-              {/* Keresztnév */}
-              <FormControl>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none" pt={2}>
-                    <PersonIcon color="white" boxSize={5} />
-                  </InputLeftElement>
-                  <Input
-                    type="text"
-                    placeholder="Keresztnév"
-                    value={keresztnev}
-                    onChange={(e) => setKeresztnev(e.target.value)}
-                    variant="flushed"
-                    borderBottom="1px solid rgba(255,255,255,0.5)"
-                    _placeholder={{ color: "#ffffffa0" }}
-                    _focus={{ borderColor: "white", boxShadow: "none" }}
-                    color="white"
-                    fontSize="lg"
-                    height="50px"
-                    pl={10}
-                  />
-                </InputGroup>
-              </FormControl>
+              <RegisztracioMezo
+                icon={<SzemelyIkon color="white" boxSize={5} />}
+                placeholder="Keresztnév"
+                value={keresztnev}
+                onChange={setKeresztnev}
+              />
 
-              {/* Email */}
-              <FormControl>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none" pt={2}>
-                    <EmailIcon color="white" boxSize={5} />
-                  </InputLeftElement>
-                  <Input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    variant="flushed"
-                    borderBottom="1px solid rgba(255,255,255,0.5)"
-                    _placeholder={{ color: "#ffffffa0" }}
-                    _focus={{ borderColor: "white", boxShadow: "none" }}
-                    color="white"
-                    fontSize="lg"
-                    height="50px"
-                    pl={10}
-                  />
-                </InputGroup>
-              </FormControl>
+              <RegisztracioMezo
+                icon={<EmailIcon color="white" boxSize={5} />}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={setEmail}
+              />
 
-              {/* Jelszó */}
-              <FormControl>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none" pt={2}>
-                    <LockIcon color="white" boxSize={5} />
-                  </InputLeftElement>
-                  <Input
-                    type="password"
-                    placeholder="Jelszó"
-                    value={jelszo}
-                    onChange={(e) => setJelszo(e.target.value)}
-                    variant="flushed"
-                    borderBottom="1px solid rgba(255,255,255,0.5)"
-                    _placeholder={{ color: "#ffffffa0" }}
-                    _focus={{ borderColor: "white", boxShadow: "none" }}
-                    color="white"
-                    fontSize="lg"
-                    height="50px"
-                    pl={10}
-                  />
-                </InputGroup>
-              </FormControl>
+              <RegisztracioMezo
+                icon={<LockIcon color="white" boxSize={5} />}
+                type="password"
+                placeholder="Jelszó"
+                value={jelszo}
+                onChange={setJelszo}
+              />
 
-              {/* Jelszó megerősítése */}
-              <FormControl>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none" pt={2}>
-                    <LockIcon color="white" boxSize={5} />
-                  </InputLeftElement>
-                  <Input
-                    type="password"
-                    placeholder="Jelszó megerősítése"
-                    value={jelszo2}
-                    onChange={(e) => setJelszo2(e.target.value)}
-                    variant="flushed"
-                    borderBottom="1px solid rgba(255,255,255,0.5)"
-                    _placeholder={{ color: "#ffffffa0" }}
-                    _focus={{ borderColor: "white", boxShadow: "none" }}
-                    color="white"
-                    fontSize="lg"
-                    height="50px"
-                    pl={10}
-                  />
-                </InputGroup>
-              </FormControl>
+              <RegisztracioMezo
+                icon={<LockIcon color="white" boxSize={5} />}
+                type="password"
+                placeholder="Jelszó megerősítése"
+                value={jelszo2}
+                onChange={setJelszo2}
+              />
 
             </VStack>
 
