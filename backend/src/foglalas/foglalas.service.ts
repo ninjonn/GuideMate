@@ -23,91 +23,59 @@ import {
 export class FoglalasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Foglalasok listazasa a bejelentkezett felhasznalonak.
   async listForUser(userId: number): Promise<FoglalasListResponse> {
     const foglalasok = await this.prisma.foglalas.findMany({
       where: { felhasznalo_id: userId },
       orderBy: { indulasi_ido: 'asc' },
     });
 
-    const items = foglalasok.map((foglalas) => mapToListItem(foglalas));
-
-    return {
-      foglalasok: items,
-      osszesen: items.length,
-    };
+    const items = foglalasok.map(mapToListItem);
+    return { foglalasok: items, osszesen: items.length };
   }
 
-  // Uj foglalas letrehozasa a felhasznalohoz kotve.
   async createForUser(
     userId: number,
     dto: CreateFoglalasDto,
   ): Promise<FoglalasCreateResponse> {
     const data = mapCreateDtoToData(dto);
     const created = await this.prisma.foglalas.create({
-      data: {
-        felhasznalo_id: userId,
-        ...data,
-      },
+      data: { felhasznalo_id: userId, ...data },
     });
 
-    const response = mapToListItem(created);
     return {
       letrehozas_datuma: created.letrehozva.toISOString(),
-      ...response,
+      ...mapToListItem(created),
     };
   }
 
-  // Foglalas frissitese ID alapjan.
   async updateFoglalas(
     userId: number,
     foglalasId: number,
     dto: UpdateFoglalasDto,
   ): Promise<FoglalasUpdateResponse> {
-    // Megnezzuk, hogy letezik-e a foglalas.
-    const existing = await this.prisma.foglalas.findUnique({
-      where: { foglalas_id: foglalasId },
-    });
-    if (!existing) {
-      throw new NotFoundException('Foglalas nem talalhato.');
-    }
+    const existing = await this.findOrThrow(foglalasId);
+    this.ensureAccess(userId, existing);
 
-    this.ensureFoglalasAccess(userId, existing);
-
-    // Csak a megadott mezoket frissitjuk.
     const updatedData = mapUpdateDtoToData(existing, dto);
     if (Object.keys(updatedData).length === 0) {
       throw new BadRequestException('Nincs megadott modositando adat.');
     }
 
-    // DB update es visszateres az uj ertekekkel.
     const updated = await this.prisma.foglalas.update({
       where: { foglalas_id: foglalasId },
       data: updatedData,
     });
 
-    return {
-      ...mapToListItem(updated),
-      sikeres: true,
-    };
+    return { ...mapToListItem(updated), sikeres: true };
   }
 
-  // Foglalas torlese ID alapjan.
   async deleteFoglalas(
     userId: number,
     foglalasId: number,
   ): Promise<FoglalasDeleteResponse> {
-    // Ellenorizzuk, hogy letezik-e a rekord.
-    const existing = await this.prisma.foglalas.findUnique({
-      where: { foglalas_id: foglalasId },
-    });
-    if (!existing) {
-      throw new NotFoundException('Foglalas nem talalhato.');
-    }
+    const existing = await this.findOrThrow(foglalasId);
+    this.ensureAccess(userId, existing);
 
-    this.ensureFoglalasAccess(userId, existing);
-
-    // Egyszeru torles, nincs kapcsolt tabla itt.
     await this.prisma.foglalas.delete({ where: { foglalas_id: foglalasId } });
 
     return {
@@ -117,7 +85,17 @@ export class FoglalasService {
     };
   }
 
-  private ensureFoglalasAccess(
+  private async findOrThrow(foglalasId: number) {
+    const existing = await this.prisma.foglalas.findUnique({
+      where: { foglalas_id: foglalasId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Foglalas nem talalhato.');
+    }
+    return existing;
+  }
+
+  private ensureAccess(
     userId: number,
     foglalas: { felhasznalo_id: number | null },
   ): void {

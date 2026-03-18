@@ -124,8 +124,9 @@ export const useTerkepOldal = () => {
           coords.lat,
           coords.lon,
         );
+        const areaTypes = ['city', 'administrative', 'town', 'village', 'hamlet', 'suburb'];
         const isCity = specificResults.length === 1 &&
-          specificResults[0].kinds === 'city';
+          areaTypes.includes(specificResults[0].kinds);
 
         if (specificResults.length > 0 && !isCity) {
           const best = specificResults[0];

@@ -21,6 +21,7 @@ model Felhasznalo {
   letrehozva       DateTime          @default(now())
   utazasResztvevok UtazasResztvevo[]
   foglalasok       Foglalas[]
+  accessTokens     UserAccessToken[]
 }
 
 model UserAccessToken {
