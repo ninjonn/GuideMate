@@ -48,7 +48,9 @@ describe('UsersService', () => {
   it('findOneByEmail – undefined, ha nincs találat', async () => {
     prisma.felhasznalo.findUnique.mockResolvedValue(null);
 
-    await expect(service.findOneByEmail('nincs@email.hu')).resolves.toBeUndefined();
+    await expect(
+      service.findOneByEmail('nincs@email.hu'),
+    ).resolves.toBeUndefined();
   });
 
   it('createUser – alap szerepkör felhasznalo', async () => {
@@ -104,7 +106,9 @@ describe('UsersService', () => {
   it('jelszó változtatás – siker', async () => {
     prisma.felhasznalo.update.mockResolvedValue({});
 
-    await expect(service.updatePasswordHash(4, 'hash')).resolves.toBeUndefined();
+    await expect(
+      service.updatePasswordHash(4, 'hash'),
+    ).resolves.toBeUndefined();
 
     expect(prisma.felhasznalo.update).toHaveBeenCalledWith({
       where: { felhasznalo_id: 4 },

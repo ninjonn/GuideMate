@@ -9,84 +9,26 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
 import { AdminUserQueryDto } from './dto/admin-user-query.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import type {
+  AdminUserListResponse,
+  AdminUserDetailResponse,
+  AdminUserRoleResponse,
+  AdminUserDeleteResponse,
+  AdminStatsResponse,
+} from './admin.types';
 
-// Admin listaban szereplo felhasznalo.
-export type AdminUserListItem = {
-  azonosito: number;
-  nev: string;
-  email: string;
-  szerepkor: string;
-  regisztracio_datum: string;
-  utazasok_szama: number;
-};
-
-// Admin listavalasz lapozassal.
-export type AdminUserListResponse = {
-  felhasznalok: AdminUserListItem[];
-  osszesen: number;
-  oldal: number;
-  oldalak_szama: number;
-};
-
-// Admin reszletes felhasznalo adat.
-export type AdminUserDetailResponse = {
-  azonosito: number;
-  nev: string;
-  email: string;
-  szerepkor: string;
-  regisztracio_datum: string;
-  utazasok_szama: number;
-  hozzaadott_elemek: {
-    programok: number;
-    foglalasok: number;
-    ellenorzolistak: number;
-  };
-};
-
-// Jogosultsag frissites valasz.
-export type AdminUserRoleResponse = {
-  azonosito: number;
-  nev: string;
-  email: string;
-  szerepkor: string;
-  sikeres: boolean;
-  uzenet: string;
-};
-
-// Torles valasz alap mezokkel.
-export type AdminUserDeleteResponse = {
-  sikeres: boolean;
-  uzenet: string;
-  torolt_felhasznalo_id: number;
-  torolt_utazasok: number;
-  torolt_programok: number;
-};
-
-// Admin statisztika valasz.
-export type AdminStatsResponse = {
-  felhasznalok: {
-    osszesen: number;
-    adminok: number;
-    regular_users: number;
-    mai_regisztraciok: number;
-  };
-  utazasok: {
-    osszesen: number;
-    aktiv: number;
-    lezart: number;
-    mai_letrehozasok: number;
-  };
-  programok: { osszesen: number };
-  foglalasok: { osszesen: number };
-  ellenorzolistak: { osszesen: number };
-  utolso_frissites: string;
-};
+export type {
+  AdminUserListResponse,
+  AdminUserDetailResponse,
+  AdminUserRoleResponse,
+  AdminUserDeleteResponse,
+  AdminStatsResponse,
+} from './admin.types';
 
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Felhasznalok listazasa szures es lapozas mellett.
   async listUsers(
     adminId: number,
     query: AdminUserQueryDto,
@@ -100,15 +42,16 @@ export class AdminService {
     const where: Prisma.FelhasznaloWhereInput = {};
     const search = query.kereses?.trim();
     if (search) {
-      where.OR = [{ nev: { contains: search } }, { email: { contains: search } }];
+      where.OR = [
+        { nev: { contains: search } },
+        { email: { contains: search } },
+      ];
     }
 
     const roleFilter = query.szerepkor
       ? this.mapRoleInput(query.szerepkor)
       : undefined;
-    if (roleFilter) {
-      where.szerepkor = roleFilter;
-    }
+    if (roleFilter) where.szerepkor = roleFilter;
 
     const [osszesen, rows] = await this.prisma.$transaction([
       this.prisma.felhasznalo.count({ where }),
@@ -145,7 +88,6 @@ export class AdminService {
     };
   }
 
-  // Egy felhasznalo reszletes adatai adminnak.
   async getUser(
     adminId: number,
     userId: number,
@@ -203,7 +145,6 @@ export class AdminService {
     };
   }
 
-  // Felhasznalo szerepkorenek frissitese.
   async updateUserRole(
     adminId: number,
     userId: number,
@@ -234,7 +175,6 @@ export class AdminService {
     };
   }
 
-  // Felhasznalo torlese a kapcsolt rekordokkal.
   async deleteUser(
     adminId: number,
     userId: number,
@@ -248,16 +188,15 @@ export class AdminService {
       throw new NotFoundException('Felhasznalo nem talalhato.');
     }
 
-    const [tokenResult, foglalasResult, resztvevoResult] =
-      await this.prisma.$transaction([
-        this.prisma.userAccessToken.deleteMany({
-          where: { felhasznalo_id: userId },
-        }),
-        this.prisma.foglalas.deleteMany({ where: { felhasznalo_id: userId } }),
-        this.prisma.utazasResztvevo.deleteMany({
-          where: { felhasznalo_id: userId },
-        }),
-      ]);
+    const [, , resztvevoResult] = await this.prisma.$transaction([
+      this.prisma.userAccessToken.deleteMany({
+        where: { felhasznalo_id: userId },
+      }),
+      this.prisma.foglalas.deleteMany({ where: { felhasznalo_id: userId } }),
+      this.prisma.utazasResztvevo.deleteMany({
+        where: { felhasznalo_id: userId },
+      }),
+    ]);
 
     await this.prisma.felhasznalo.delete({
       where: { felhasznalo_id: userId },
@@ -272,7 +211,6 @@ export class AdminService {
     };
   }
 
-  // Rendszerstatisztikak lekerese.
   async getStats(adminId: number): Promise<AdminStatsResponse> {
     await this.ensureAdmin(adminId);
 
@@ -342,12 +280,8 @@ export class AdminService {
   }
 
   private mapRoleInput(role: 'admin' | 'user'): 'admin' | 'felhasznalo' {
-    if (role === 'admin') {
-      return 'admin';
-    }
-    if (role === 'user') {
-      return 'felhasznalo';
-    }
+    if (role === 'admin') return 'admin';
+    if (role === 'user') return 'felhasznalo';
     throw new BadRequestException('Ismeretlen szerepkor.');
   }
 }

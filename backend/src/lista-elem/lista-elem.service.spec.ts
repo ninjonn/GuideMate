@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { PrismaService } from 'src/prisma.service';
+import { ParticipantService } from 'src/participant.service';
 import { ListaElemService } from './lista-elem.service';
 
 describe('ListaElemService', () => {
@@ -22,7 +23,13 @@ describe('ListaElemService', () => {
     },
   };
 
-  const service = new ListaElemService(prismaMock as unknown as PrismaService);
+  const participantService = new ParticipantService(
+    prismaMock as unknown as PrismaService,
+  );
+  const service = new ListaElemService(
+    prismaMock as unknown as PrismaService,
+    participantService,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -92,9 +99,9 @@ describe('ListaElemService', () => {
   it('updateElem – NotFound, ha elem nem létezik', async () => {
     prismaMock.listaElem.findUnique.mockResolvedValue(null);
 
-    await expect(service.updateElem(1, 99, { kipipalva: true })).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.updateElem(1, 99, { kipipalva: true }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('updateElem – tiltva, ha nincs jogosultság', async () => {
@@ -106,9 +113,9 @@ describe('ListaElemService', () => {
     });
     prismaMock.utazasResztvevo.findFirst.mockResolvedValue(null);
 
-    await expect(service.updateElem(1, 1, { kipipalva: true })).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.updateElem(1, 1, { kipipalva: true }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('updateElem – sikeres frissítés', async () => {
@@ -136,7 +143,9 @@ describe('ListaElemService', () => {
   it('deleteElem – NotFound, ha elem nem létezik', async () => {
     prismaMock.listaElem.findUnique.mockResolvedValue(null);
 
-    await expect(service.deleteElem(1, 99)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.deleteElem(1, 99)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('deleteElem – tiltva, ha nincs jogosultság', async () => {
@@ -146,7 +155,9 @@ describe('ListaElemService', () => {
     });
     prismaMock.utazasResztvevo.findFirst.mockResolvedValue(null);
 
-    await expect(service.deleteElem(1, 1)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.deleteElem(1, 1)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('deleteElem – sikeres törlés', async () => {

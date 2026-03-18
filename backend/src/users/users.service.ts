@@ -1,5 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+
+export const SALT_ROUNDS = 10;
 
 export interface User {
   userId: number;
@@ -10,7 +19,6 @@ export interface User {
   createdAt: Date;
 }
 
-// A Prisma rekord formaja, amit belso user tipusra alakitunk.
 type FelhasznaloRecord = {
   felhasznalo_id: number;
   nev: string;
@@ -24,39 +32,25 @@ type FelhasznaloRecord = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Felhasznalo lekeres ID alapjan, hiany eseten undefined.
   async findOneById(userId: number): Promise<User | undefined> {
-    // Egyetlen rekordot keresunk primer kulcs alapjan.
     const record = await this.prisma.felhasznalo.findUnique({
       where: { felhasznalo_id: userId },
     });
-    if (!record) {
-      return undefined;
-    }
-    // A Prisma rekordot app formatumra alakitjuk.
-    return this.mapToUser(record);
+    return record ? this.mapToUser(record) : undefined;
   }
 
-  // Felhasznalo lekeres email alapjan, loginhoz es ellenorzeshez.
   async findOneByEmail(email: string): Promise<User | undefined> {
-    // Egyedi emailre keresunk, ez a login alapja.
     const record = await this.prisma.felhasznalo.findUnique({
       where: { email },
     });
-    if (!record) {
-      return undefined;
-    }
-    // A Prisma rekordot app formatumra alakitjuk.
-    return this.mapToUser(record);
+    return record ? this.mapToUser(record) : undefined;
   }
 
-  // Uj felhasznalo mentese, alap szerepkor: felhasznalo.
   async createUser(data: {
     username: string;
     email: string;
     passwordHash: string;
   }): Promise<User> {
-    // A DB-ben a nev es a hash mezok is kotottek.
     const created = await this.prisma.felhasznalo.create({
       data: {
         nev: data.username,
@@ -65,16 +59,128 @@ export class UsersService {
         szerepkor: 'felhasznalo',
       },
     });
-    // Letrehozas utan visszaadjuk az egyseges user formatumot.
     return this.mapToUser(created);
   }
 
-  // Profil adatok frissitese (nev/email).
+  async countTripsForUser(userId: number): Promise<number> {
+    return this.prisma.utazasResztvevo.count({
+      where: { felhasznalo_id: userId },
+    });
+  }
+
+  async getProfile(userId: number): Promise<{
+    azonosito: number;
+    nev: string;
+    email: string;
+    regisztracio_datum: string;
+    szerepkor: string;
+    utazasok_szama: number;
+  }> {
+    const user = await this.findOneById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Felhasználó nem található.');
+    }
+    const tripCount = await this.countTripsForUser(user.userId);
+    return {
+      azonosito: user.userId,
+      nev: user.username,
+      email: user.email,
+      regisztracio_datum: user.createdAt.toISOString(),
+      szerepkor: user.role,
+      utazasok_szama: tripCount,
+    };
+  }
+
+  async updateProfileFromDto(
+    userId: number,
+    dto: UpdateProfileDto,
+  ): Promise<{
+    azonosito: number;
+    nev: string;
+    email: string;
+    sikeres: boolean;
+    uzenet: string;
+  }> {
+    if (!dto.email && !dto.vezeteknev && !dto.keresztnev) {
+      throw new BadRequestException('Nincs megadott módosítandó adat.');
+    }
+    if (
+      (dto.vezeteknev && !dto.keresztnev) ||
+      (!dto.vezeteknev && dto.keresztnev)
+    ) {
+      throw new BadRequestException(
+        'A vezetéknév és keresztnév együtt kötelező.',
+      );
+    }
+
+    const currentUser = await this.findOneById(userId);
+    if (!currentUser) {
+      throw new UnauthorizedException('Felhasználó nem található.');
+    }
+
+    let username: string | undefined;
+    if (dto.vezeteknev && dto.keresztnev) {
+      username = `${dto.vezeteknev} ${dto.keresztnev}`.trim();
+    }
+
+    let nextEmail = dto.email;
+    if (nextEmail && nextEmail !== currentUser.email) {
+      const existing = await this.findOneByEmail(nextEmail);
+      if (existing && existing.userId !== currentUser.userId) {
+        throw new BadRequestException('Ezzel az emaillel már regisztráltak.');
+      }
+    } else {
+      nextEmail = undefined;
+    }
+
+    if (!username && !nextEmail) {
+      throw new BadRequestException('Nincs megadott módosítandó adat.');
+    }
+
+    const updated = await this.updateProfile(currentUser.userId, {
+      username,
+      email: nextEmail,
+    });
+
+    return {
+      azonosito: updated.userId,
+      nev: updated.username,
+      email: updated.email,
+      sikeres: true,
+      uzenet: 'Profil sikeresen módosítva',
+    };
+  }
+
+  async changePassword(
+    userId: number,
+    dto: ChangePasswordDto,
+  ): Promise<{ sikeres: boolean; uzenet: string }> {
+    const user = await this.findOneById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Felhasználó nem található.');
+    }
+
+    const passwordMatch = await bcrypt.compare(
+      dto.regi_jelszo,
+      user.passwordHash,
+    );
+    if (!passwordMatch) {
+      throw new UnauthorizedException('Hibás jelszó.');
+    }
+    if (dto.regi_jelszo === dto.uj_jelszo) {
+      throw new BadRequestException('Az új jelszó nem lehet azonos a régivel.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.uj_jelszo, SALT_ROUNDS);
+    await this.updatePasswordHash(user.userId, passwordHash);
+
+    return { sikeres: true, uzenet: 'Jelszó sikeresen módosítva' };
+  }
+
   async updateProfile(
     userId: number,
     data: { username?: string; email?: string },
   ): Promise<User> {
-    // Csak a megadott mezoket irjuk felul.
     const updated = await this.prisma.felhasznalo.update({
       where: { felhasznalo_id: userId },
       data: {
@@ -82,33 +188,20 @@ export class UsersService {
         email: data.email,
       },
     });
-    // Frissitett adatokat app formatumban adjuk vissza.
     return this.mapToUser(updated);
   }
 
-  // Jelszo hash frissitese, csak a hash mezot irjuk.
   async updatePasswordHash(
     userId: number,
     passwordHash: string,
   ): Promise<void> {
-    // Kulon update, hogy ne nyuljunk mas mezokhoz.
     await this.prisma.felhasznalo.update({
       where: { felhasznalo_id: userId },
       data: { jelszo_hash: passwordHash },
     });
   }
 
-  // Utazasok szama a felhasznalohoz (resztvevo rekordok szama).
-  async countTripsForUser(userId: number): Promise<number> {
-    // A resztvevo tabla darabszama adja a trip count-ot.
-    return await this.prisma.utazasResztvevo.count({
-      where: { felhasznalo_id: userId },
-    });
-  }
-
-  // Prisma rekord -> app user forma, egyseges visszaadas.
   private mapToUser(record: FelhasznaloRecord): User {
-    // Itt nevezzuk at a mezoket az appban hasznalt formara.
     return {
       userId: record.felhasznalo_id,
       username: record.nev,

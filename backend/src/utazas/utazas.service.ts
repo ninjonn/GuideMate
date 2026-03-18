@@ -1,101 +1,38 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
+import { ParticipantService } from 'src/participant.service';
 import { UtazasQueryDto } from './dto/utazas-query.dto';
 import { CreateUtazasDto } from './dto/create-utazas.dto';
 import { UpdateUtazasDto } from './dto/update-utazas.dto';
+import type {
+  UtazasListResponse,
+  UtazasDetailResponse,
+  UtazasWithProgramok,
+  UtazasCreateResponse,
+  UtazasUpdateResponse,
+  UtazasDeleteResponse,
+} from './utazas.types';
 
-// Lista tetel, a listazas API formatumahoz igazodva.
-export type UtazasListItem = {
-  azonosito: number;
-  cim: string;
-  leiras: string | null;
-  kezdo_datum: string;
-  veg_datum: string;
-  programok_szama: number;
-  jegyek_szama: number;
-  ellenorzolistak_szama: number;
-};
-
-// Lista valasz, osszesites es lapozas mezokkel.
-export type UtazasListResponse = {
-  utazasok: UtazasListItem[];
-  osszesen: number;
-  oldal: number;
-  oldalak_szama: number;
-};
-
-// Reszletes utazas nezet, programokkal.
-export type UtazasDetailResponse = {
-  azonosito: number;
-  cim: string;
-  leiras: string | null;
-  kezdo_datum: string;
-  veg_datum: string;
-  letrehozas_datuma: string;
-  programok: {
-    azonosito: number;
-    nev: string;
-    leiras: string | null;
-    nap_datum: string;
-    kezdo_ido: string;
-    veg_ido: string;
-  }[];
-};
-
-// Utazas rekord program reszletekkel, a listazas tipizalasahoz.
-type UtazasWithProgramok = Prisma.UtazasGetPayload<{
-  include: {
-    programok: {
-      select: {
-        program_id: true;
-        program_nev: true;
-        leiras: true;
-        nap_datum: true;
-        kezdo_ido: true;
-        veg_ido: true;
-      };
-    };
-  };
-}>;
-
-// Letrehozas utani valasz, alap mezokkel.
-export type UtazasCreateResponse = {
-  azonosito: number;
-  cim: string;
-  leiras: string | null;
-  kezdo_datum: string;
-  veg_datum: string;
-  letrehozas_datuma: string;
-};
-
-// Frissites valasz, sikeres jelzessel.
-export type UtazasUpdateResponse = {
-  azonosito: number;
-  cim: string;
-  leiras: string | null;
-  kezdo_datum: string;
-  veg_datum: string;
-  sikeres: boolean;
-};
-
-// Torles valasz, egyszeru visszajelzessel.
-export type UtazasDeleteResponse = {
-  sikeres: boolean;
-  uzenet: string;
-  torolt_utazas_id: number;
-};
+export type {
+  UtazasListResponse,
+  UtazasDetailResponse,
+  UtazasCreateResponse,
+  UtazasUpdateResponse,
+  UtazasDeleteResponse,
+} from './utazas.types';
 
 @Injectable()
 export class UtazasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly participantService: ParticipantService,
+  ) {}
 
-  // Utazasok listazasa a bejelentkezett felhasznalonak.
   async listForUser(
     userId: number,
     query: UtazasQueryDto,
@@ -103,28 +40,20 @@ export class UtazasService {
     const oldal = query.oldal ?? 1;
     const limit = query.limit ?? 10;
 
-    // Torolt statuszra most ures listat adunk vissza.
     if (query.statusz === 'torolt') {
-      return {
-        utazasok: [],
-        osszesen: 0,
-        oldal,
-        oldalak_szama: 0,
-      };
+      return { utazasok: [], osszesen: 0, oldal, oldalak_szama: 0 };
     }
 
-    const where = {
+    const where: Prisma.UtazasWhereInput = {
       resztvevok: { some: { felhasznalo_id: userId } },
     };
 
-    // Aktiv/lezart szures a veg_datum alapjan.
     if (query.statusz === 'aktiv') {
-      (where as { veg_datum?: { gte: Date } }).veg_datum = { gte: new Date() };
+      where.veg_datum = { gte: new Date() };
     } else if (query.statusz === 'lezart') {
-      (where as { veg_datum?: { lt: Date } }).veg_datum = { lt: new Date() };
+      where.veg_datum = { lt: new Date() };
     }
 
-    // Egyszeru rendezes datum vagy nev szerint.
     let orderBy: { kezdo_datum?: 'asc'; nev?: 'asc' } | undefined;
     if (query.rendez === 'datum') {
       orderBy = { kezdo_datum: 'asc' };
@@ -134,7 +63,6 @@ export class UtazasService {
 
     const skip = (oldal - 1) * limit;
 
-    // Egy tranzakcioban szamolunk es listazunk.
     const [osszesen, rows] = await this.prisma.$transaction([
       this.prisma.utazas.count({ where }),
       this.prisma.utazas.findMany({
@@ -143,17 +71,11 @@ export class UtazasService {
         skip,
         take: limit,
         include: {
-          _count: {
-            select: {
-              programok: true,
-              listak: true,
-            },
-          },
+          _count: { select: { programok: true, listak: true } },
         },
       }),
     ]);
 
-    // DB mezok atalakitasa az API valasz formatumara.
     const utazasok = rows.map((row) => ({
       azonosito: row.utazas_id,
       cim: row.nev,
@@ -165,7 +87,6 @@ export class UtazasService {
       ellenorzolistak_szama: row._count.listak,
     }));
 
-    // Oldalak szama a teljes elemszam es a limit alapjan.
     return {
       utazasok,
       osszesen,
@@ -174,12 +95,10 @@ export class UtazasService {
     };
   }
 
-  // Egy utazas reszletei, csak a resztvevoknek.
   async getForUser(
     userId: number,
     utazasId: number,
   ): Promise<UtazasDetailResponse> {
-    // Az utazas alapadatai, programokkal.
     const utazas = (await this.prisma.utazas.findUnique({
       where: { utazas_id: utazasId },
       include: {
@@ -196,31 +115,19 @@ export class UtazasService {
       },
     })) as UtazasWithProgramok | null;
 
-    // Nincs ilyen utazas.
     if (!utazas) {
       throw new NotFoundException('Utazas nem talalhato.');
     }
 
-    // Csak resztvevo lathatja.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
+    await this.participantService.ensureParticipant(utazasId, userId);
 
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
-
-    // A letrehozas_datuma az utazas letrehozas ideje.
-    const letrehozva = utazas.letrehozva;
-
-    // Valasz formatum osszerakasa.
     return {
       azonosito: utazas.utazas_id,
       cim: utazas.nev,
       leiras: utazas.leiras,
       kezdo_datum: this.formatDate(utazas.kezdo_datum),
       veg_datum: this.formatDate(utazas.veg_datum),
-      letrehozas_datuma: letrehozva.toISOString(),
+      letrehozas_datuma: utazas.letrehozva.toISOString(),
       programok: utazas.programok.map((program) => ({
         azonosito: program.program_id,
         nev: program.program_nev,
@@ -232,13 +139,10 @@ export class UtazasService {
     };
   }
 
-  // Uj utazas letrehozasa, a bejelentkezett felhasznalot hozzarendeljuk.
   async createForUser(
     userId: number,
     dto: CreateUtazasDto,
   ): Promise<UtazasCreateResponse> {
-    // Az input datumokat Date-re alakitjuk.
-    const now = new Date();
     const created = await this.prisma.utazas.create({
       data: {
         nev: dto.cim,
@@ -246,15 +150,11 @@ export class UtazasService {
         kezdo_datum: new Date(dto.kezdo_datum),
         veg_datum: new Date(dto.veg_datum),
         resztvevok: {
-          create: {
-            felhasznalo_id: userId,
-            csatlakozas_ideje: now,
-          },
+          create: { felhasznalo_id: userId, csatlakozas_ideje: new Date() },
         },
       },
     });
 
-    // Letrehozas utan a formatalt valaszt adjuk vissza.
     return {
       azonosito: created.utazas_id,
       cim: created.nev,
@@ -265,22 +165,13 @@ export class UtazasService {
     };
   }
 
-  // Utazas frissitese, csak ha a felhasznalo resztvevo.
   async updateForUser(
     userId: number,
     utazasId: number,
     dto: UpdateUtazasDto,
   ): Promise<UtazasUpdateResponse> {
-    // Frissiteshez is kell resztvevoi jogosultsag.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
+    await this.participantService.ensureParticipant(utazasId, userId);
 
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
-
-    // Csak a megadott mezoket frissitjuk.
     const data: {
       nev?: string;
       leiras?: string | null;
@@ -288,31 +179,20 @@ export class UtazasService {
       veg_datum?: Date;
     } = {};
 
-    if (dto.cim) {
-      data.nev = dto.cim;
-    }
-    // Leiras lehet ures is, ilyenkor null-ra allitjuk.
-    if (dto.leiras !== undefined) {
-      data.leiras = dto.leiras ?? null;
-    }
-    if (dto.kezdo_datum) {
-      data.kezdo_datum = new Date(dto.kezdo_datum);
-    }
-    if (dto.veg_datum) {
-      data.veg_datum = new Date(dto.veg_datum);
-    }
+    if (dto.cim) data.nev = dto.cim;
+    if (dto.leiras !== undefined) data.leiras = dto.leiras ?? null;
+    if (dto.kezdo_datum) data.kezdo_datum = new Date(dto.kezdo_datum);
+    if (dto.veg_datum) data.veg_datum = new Date(dto.veg_datum);
 
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('Nincs megadott modositando adat.');
     }
 
-    // Aktualis adatokat mentunk vissza.
     const updated = await this.prisma.utazas.update({
       where: { utazas_id: utazasId },
       data,
     });
 
-    // Sikeres frissites visszajelzese.
     return {
       azonosito: updated.utazas_id,
       cim: updated.nev,
@@ -323,54 +203,29 @@ export class UtazasService {
     };
   }
 
-  // Utazas torlese, az osszes kapcsolt rekorddal.
   async deleteForUser(
     userId: number,
     utazasId: number,
   ): Promise<UtazasDeleteResponse> {
-    // Torleshez is resztvevoi jogosultsag kell.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
+    await this.participantService.ensureParticipant(utazasId, userId);
 
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
-
-    // Torles a kapcsolt rekordok miatt tranzakcioban.
     await this.prisma.$transaction(async (tx) => {
-      const programok = await tx.program.findMany({
-        where: { utazas_id: utazasId },
-        select: { program_id: true },
-      });
-      const programIds = programok.map((p) => p.program_id);
-      // Program latnivalo rekordok torlese.
-      if (programIds.length > 0) {
-        await tx.programLatnivalo.deleteMany({
-          where: { program_id: { in: programIds } },
-        });
-      }
-
       const listak = await tx.ellenorzoLista.findMany({
         where: { utazas_id: utazasId },
         select: { lista_id: true },
       });
       const listaIds = listak.map((l) => l.lista_id);
-      // Lista elemek torlese a listakhoz.
       if (listaIds.length > 0) {
         await tx.listaElem.deleteMany({
           where: { lista_id: { in: listaIds } },
         });
       }
-
-      // Kozvetlen kapcsolatok torlese.
       await tx.program.deleteMany({ where: { utazas_id: utazasId } });
       await tx.ellenorzoLista.deleteMany({ where: { utazas_id: utazasId } });
       await tx.utazasResztvevo.deleteMany({ where: { utazas_id: utazasId } });
       await tx.utazas.delete({ where: { utazas_id: utazasId } });
     });
 
-    // Egyszeru visszajelzes a torlesrol.
     return {
       sikeres: true,
       uzenet: 'Utazas sikeresen torolve',
@@ -379,7 +234,6 @@ export class UtazasService {
   }
 
   private formatDate(date: Date): string {
-    // YYYY-MM-DD formatumra vagjuk a datumot.
     return date.toISOString().slice(0, 10);
   }
 }

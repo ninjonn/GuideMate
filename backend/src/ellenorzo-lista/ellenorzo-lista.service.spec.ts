@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from 'src/prisma.service';
+import { ParticipantService } from 'src/participant.service';
 import { EllenorzoListaService } from './ellenorzo-lista.service';
 
 describe('EllenorzoListaService', () => {
@@ -19,8 +20,12 @@ describe('EllenorzoListaService', () => {
     $transaction: jest.fn(),
   };
 
+  const participantService = new ParticipantService(
+    prismaMock as unknown as PrismaService,
+  );
   const service = new EllenorzoListaService(
     prismaMock as unknown as PrismaService,
+    participantService,
   );
 
   beforeEach(() => {
