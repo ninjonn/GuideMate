@@ -1,71 +1,35 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
+import { ParticipantService } from 'src/participant.service';
 import { CreateEllenorzoListaDto } from './dto/create-ellenorzo-lista.dto';
+import type {
+  EllenorzoListaListResponse,
+  EllenorzoListaCreateResponse,
+  EllenorzoListaDeleteResponse,
+} from './ellenorzo-lista.types';
 
-// Lista elemek valasz formatuma.
-export type EllenorzoListaElemItem = {
-  elem_id: number;
-  megnevezes: string;
-  kipipalva: boolean;
-};
-
-// Ellenorzolista valasz formatuma, elemekkel.
-export type EllenorzoListaItem = {
-  lista_id: number;
-  lista_nev: string;
-  elemek: EllenorzoListaElemItem[];
-};
-
-// Listazas valasz, osszes elem szammal.
-export type EllenorzoListaListResponse = {
-  ellenorzolistak: EllenorzoListaItem[];
-  osszesen: number;
-};
-
-// Letrehozas valasz, letrehozas_datuma mezovel.
-export type EllenorzoListaCreateResponse = {
-  lista_id: number;
-  utazas_id: number;
-  lista_nev: string;
-  letrehozas_datuma: string;
-};
-
-// Torles valasz, torolt elemek szamaval.
-export type EllenorzoListaDeleteResponse = {
-  sikeres: boolean;
-  uzenet: string;
-  torolt_lista_id: number;
-  torolt_elemek_szama: number;
-};
+export type {
+  EllenorzoListaListResponse,
+  EllenorzoListaCreateResponse,
+  EllenorzoListaDeleteResponse,
+} from './ellenorzo-lista.types';
 
 @Injectable()
 export class EllenorzoListaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly participantService: ParticipantService,
+  ) {}
 
-  // Ellenorzolistak listazasa egy utazashoz.
   async listForTrip(
     userId: number,
     utazasId: number,
   ): Promise<EllenorzoListaListResponse> {
-    // Csak a resztvevok lathatjak.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
+    await this.participantService.ensureParticipant(utazasId, userId);
 
     const listak = await this.prisma.ellenorzoLista.findMany({
       where: { utazas_id: utazasId },
-      include: {
-        elemek: {
-          orderBy: { elem_id: 'asc' },
-        },
-      },
+      include: { elemek: { orderBy: { elem_id: 'asc' } } },
       orderBy: { lista_id: 'asc' },
     });
 
@@ -79,31 +43,18 @@ export class EllenorzoListaService {
       })),
     }));
 
-    return {
-      ellenorzolistak: items,
-      osszesen: items.length,
-    };
+    return { ellenorzolistak: items, osszesen: items.length };
   }
 
-  // Uj ellenorzolista letrehozasa egy utazashoz.
   async createForTrip(
     userId: number,
     utazasId: number,
     dto: CreateEllenorzoListaDto,
   ): Promise<EllenorzoListaCreateResponse> {
-    // Csak a resztvevok hozhatnak letre listat.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: utazasId, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
+    await this.participantService.ensureParticipant(utazasId, userId);
 
     const created = await this.prisma.ellenorzoLista.create({
-      data: {
-        utazas_id: utazasId,
-        lista_nev: dto.lista_nev,
-      },
+      data: { utazas_id: utazasId, lista_nev: dto.lista_nev },
     });
 
     return {
@@ -114,7 +65,6 @@ export class EllenorzoListaService {
     };
   }
 
-  // Ellenorzolista torlese, elemekkel egyutt.
   async deleteLista(
     userId: number,
     listaId: number,
@@ -126,13 +76,7 @@ export class EllenorzoListaService {
       throw new NotFoundException('Ellenorzolista nem talalhato.');
     }
 
-    // Jog ellenorzes az utazas resztvevoi alapjan.
-    const participant = await this.prisma.utazasResztvevo.findFirst({
-      where: { utazas_id: existing.utazas_id, felhasznalo_id: userId },
-    });
-    if (!participant) {
-      throw new ForbiddenException('Nincs jogosultsag az utazashoz.');
-    }
+    await this.participantService.ensureParticipant(existing.utazas_id, userId);
 
     const toroltElemekSzama = await this.prisma.$transaction(async (tx) => {
       const deleted = await tx.listaElem.deleteMany({

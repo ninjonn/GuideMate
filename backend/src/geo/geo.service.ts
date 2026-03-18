@@ -10,10 +10,7 @@ export type Place = {
   name: string;
   rate: number;
   kinds: string;
-  point: {
-    lon: number;
-    lat: number;
-  };
+  point: { lon: number; lat: number };
   image?: string;
   address?: string;
 };
@@ -64,9 +61,7 @@ type GeoapifyFeature = {
   };
 };
 
-const NOMINATIM_HEADERS = {
-  'User-Agent': 'GuideMate/1.0',
-};
+const NOMINATIM_HEADERS = { 'User-Agent': 'GuideMate/1.0' };
 
 const SEARCH_CATEGORIES = [
   {
@@ -106,7 +101,6 @@ export class GeoService {
       addressdetails: true,
       extratags: true,
     });
-
     if (!data.length) {
       throw new NotFoundException('Hely nem található');
     }
@@ -123,34 +117,29 @@ export class GeoService {
         !item.address?.city);
 
     if (isCountry && countryCode) {
-      const capitalCoords = await this.getCapitalCoordinates(countryCode, countryName);
+      const capitalCoords = await this.getCapitalCoordinates(
+        countryCode,
+        countryName,
+      );
       if (capitalCoords) {
-        return {
-          ...capitalCoords,
-          isCountry: true,
-          countryCode,
-          countryName,
-        };
+        return { ...capitalCoords, isCountry: true, countryCode, countryName };
       }
     }
 
     const lat = parseFloat(item.lat);
     const lon = parseFloat(item.lon);
     const bbox = Array.isArray(item.boundingbox) ? item.boundingbox : null;
+
     if (bbox && bbox.length === 4) {
-      const south = parseFloat(bbox[0]);
-      const north = parseFloat(bbox[1]);
-      const west = parseFloat(bbox[2]);
-      const east = parseFloat(bbox[3]);
-      if (
-        !Number.isNaN(south) &&
-        !Number.isNaN(north) &&
-        !Number.isNaN(west) &&
-        !Number.isNaN(east)
-      ) {
-        const centerLat = (south + north) / 2;
-        const centerLon = (west + east) / 2;
-        return { lat: centerLat, lon: centerLon, isCountry, countryCode, countryName };
+      const [south, north, west, east] = bbox.map(parseFloat);
+      if ([south, north, west, east].every((v) => !Number.isNaN(v))) {
+        return {
+          lat: (south + north) / 2,
+          lon: (west + east) / 2,
+          isCountry,
+          countryCode,
+          countryName,
+        };
       }
     }
 
@@ -192,41 +181,16 @@ export class GeoService {
       `&limit=${limit}&offset=${offset}` +
       `&apiKey=${apiKey}`;
 
-    const res = await fetch(url);
-    if (!res.ok) {
-      return { items: [], hasMore: false };
-    }
-    const data = (await res.json()) as { features?: GeoapifyFeature[] };
-    if (!data.features || data.features.length === 0) {
+    const features = await this.fetchGeoapifyFeatures(url);
+    if (!features.length) {
       return { items: [], hasMore: false };
     }
 
-    const rawCount = Array.isArray(data.features) ? data.features.length : 0;
-    const places = data.features
-      .slice(0, limit)
-      .map((feature) => {
-        const props = feature.properties;
-        const name = props.name || props.street || props.address_line1 || 'Névtelen';
-        const placeLon = feature.geometry.coordinates[0];
-        const placeLat = feature.geometry.coordinates[1];
-        const address = props.formatted || props.address_line2;
-
-        return {
-          xid: `geoapify-${props.place_id ?? `${placeLat}-${placeLon}`}`,
-          name,
-          rate: 1,
-          kinds: category.label,
-          point: { lon: placeLon, lat: placeLat },
-          address,
-          image: undefined,
-        };
-      })
-      .filter((p) => p.name && p.name !== 'Névtelen');
-
-    return {
-      items: places,
-      hasMore: rawCount >= limit,
-    };
+    const places = this.mapFeaturesToPlaces(
+      features.slice(0, limit),
+      category.label,
+    );
+    return { items: places, hasMore: features.length >= limit };
   }
 
   async searchPlaces(params: {
@@ -250,54 +214,76 @@ export class GeoService {
       throw new NotFoundException('Hely nem található');
     }
 
-    const foundPlace = placeData[0];
+    const fallback = this.nominatimToPlace(placeData[0]);
     const apiKey = this.configService.get<string>('GEOAPIFY_API_KEY');
     if (!apiKey) {
-      return [this.toSinglePlace(foundPlace)];
+      return [fallback];
     }
 
     const url =
       `https://api.geoapify.com/v2/places?text=${encodeURIComponent(text)}` +
       `&filter=circle:${lon},${lat},15000&limit=50&apiKey=${apiKey}`;
 
-    const res = await fetch(url);
-    if (!res.ok) {
-      return [this.toSinglePlace(foundPlace)];
-    }
-
-    const data = (await res.json()) as { features?: GeoapifyFeature[] };
-    if (!data.features || data.features.length === 0) {
-      return [this.toSinglePlace(foundPlace)];
+    const features = await this.fetchGeoapifyFeatures(url);
+    if (!features.length) {
+      return [fallback];
     }
 
     const searchTermLower = text.toLowerCase();
-    const filtered = data.features.filter((feature) => {
-      const name = feature.properties.name || '';
-      return name.toLowerCase().includes(searchTermLower);
-    });
-
-    if (filtered.length === 0) {
-      return [this.toSinglePlace(foundPlace)];
+    const filtered = features.filter((f) =>
+      (f.properties.name || '').toLowerCase().includes(searchTermLower),
+    );
+    if (!filtered.length) {
+      return [fallback];
     }
-    const featuresToUse = filtered;
-    return featuresToUse
+
+    return this.mapFeaturesToPlaces(filtered);
+  }
+
+  // --- Private helpers ---
+
+  private async fetchGeoapifyFeatures(url: string): Promise<GeoapifyFeature[]> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      return [];
+    }
+    const data = (await res.json()) as { features?: GeoapifyFeature[] };
+    return data.features ?? [];
+  }
+
+  private mapFeaturesToPlaces(
+    features: GeoapifyFeature[],
+    kindLabel?: string,
+  ): Place[] {
+    return features
       .map((feature) => {
         const props = feature.properties;
-        const name = props.name || 'Névtelen';
-        const placeLon = feature.geometry.coordinates[0];
-        const placeLat = feature.geometry.coordinates[1];
-        const address = props.formatted || '';
+        const name =
+          props.name || props.street || props.address_line1 || 'Névtelen';
+        const [placeLon, placeLat] = feature.geometry.coordinates;
         return {
           xid: `geoapify-${props.place_id ?? `${placeLat}-${placeLon}`}`,
           name,
           rate: 1,
-          kinds: props.type || 'place',
+          kinds: kindLabel || props.type || 'place',
           point: { lon: placeLon, lat: placeLat },
-          address,
+          address: props.formatted || props.address_line2,
           image: undefined,
         };
       })
-      .filter((p) => p.name && p.name !== 'Névtelen');
+      .filter((p) => p.name !== 'Névtelen');
+  }
+
+  private nominatimToPlace(result: NominatimResult): Place {
+    return {
+      xid: `nominatim-${result.place_id ?? result.lat}-${result.lon}`,
+      name: result.name || result.display_name || 'Névtelen',
+      rate: 1,
+      kinds: result.type || 'landmark',
+      point: { lon: parseFloat(result.lon), lat: parseFloat(result.lat) },
+      address: result.display_name,
+      image: undefined,
+    };
   }
 
   private async searchNominatim(
@@ -308,21 +294,16 @@ export class GeoService {
       extratags?: boolean;
       countrycodes?: string;
     },
-  ) {
+  ): Promise<NominatimResult[]> {
     const params = new URLSearchParams({
       q: query,
       format: 'json',
       limit: String(options?.limit ?? 1),
     });
-    if (options?.addressdetails) {
-      params.set('addressdetails', '1');
-    }
-    if (options?.extratags) {
-      params.set('extratags', '1');
-    }
-    if (options?.countrycodes) {
-      params.set('countrycodes', options.countrycodes);
-    }
+    if (options?.addressdetails) params.set('addressdetails', '1');
+    if (options?.extratags) params.set('extratags', '1');
+    if (options?.countrycodes) params.set('countrycodes', options.countrycodes);
+
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?${params.toString()}`,
       { headers: NOMINATIM_HEADERS },
@@ -330,8 +311,7 @@ export class GeoService {
     if (!res.ok) {
       throw new BadRequestException('Hely keresési hiba');
     }
-    const data = (await res.json()) as NominatimResult[];
-    return data ?? [];
+    return ((await res.json()) as NominatimResult[]) ?? [];
   }
 
   private async getCapitalCoordinates(
@@ -340,84 +320,77 @@ export class GeoService {
   ): Promise<CoordinatesResult | null> {
     try {
       const res = await fetch(
-        `https://restcountries.com/v3.1/alpha/${encodeURIComponent(
-          countryCode,
-        )}?fields=capital,capitalInfo`,
+        `https://restcountries.com/v3.1/alpha/${encodeURIComponent(countryCode)}?fields=capital,capitalInfo`,
       );
-      if (!res.ok) {
-        throw new Error('RestCountries API hiba');
+      if (!res.ok) throw new Error('RestCountries API hiba');
+
+      interface RestCountryEntry {
+        capital?: string[];
+        capitalInfo?: { latlng?: number[] };
       }
-      const data = (await res.json()) as any;
+      const data = (await res.json()) as RestCountryEntry | RestCountryEntry[];
       const entry = Array.isArray(data) ? data[0] : data;
-      const capitalInfo = entry?.capitalInfo?.latlng;
-      if (Array.isArray(capitalInfo) && capitalInfo.length === 2) {
+
+      const latlng = entry?.capitalInfo?.latlng;
+      if (Array.isArray(latlng) && latlng.length === 2) {
         return {
-          lat: capitalInfo[0],
-          lon: capitalInfo[1],
+          lat: latlng[0],
+          lon: latlng[1],
           isCountry: true,
           countryCode,
           countryName,
         };
       }
-      const capitalName = Array.isArray(entry?.capital) ? entry.capital[0] : undefined;
+
+      const capitalName = entry?.capital?.[0];
       if (capitalName) {
-        const nominatimCapital = await this.searchNominatim(capitalName, {
-          limit: 1,
-          addressdetails: false,
-          countrycodes: countryCode,
-        });
-        const capitalItem = nominatimCapital?.[0];
-        if (capitalItem) {
-          const lat = parseFloat(capitalItem.lat);
-          const lon = parseFloat(capitalItem.lon);
-          if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
-            return { lat, lon, isCountry: true, countryCode, countryName };
-          }
-        }
+        return this.resolveNominatimCoords(
+          capitalName,
+          countryCode,
+          countryName,
+        );
       }
     } catch {
-      // ignore
+      // RestCountries API failed, try fallback
     }
 
     if (countryName) {
-      try {
-        const fallback = await this.searchNominatim(`${countryName} capital`, {
-          limit: 1,
-          addressdetails: false,
-          countrycodes: countryCode,
-        });
-        const fallbackItem = fallback?.[0];
-        if (fallbackItem) {
-          const lat = parseFloat(fallbackItem.lat);
-          const lon = parseFloat(fallbackItem.lon);
-          if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
-            return { lat, lon, isCountry: true, countryCode, countryName };
-          }
-        }
-      } catch {
-        // ignore
-      }
+      return this.resolveNominatimCoords(
+        `${countryName} capital`,
+        countryCode,
+        countryName,
+      );
     }
 
     return null;
   }
 
-  private toSinglePlace(foundPlace: NominatimResult): Place {
-    return {
-      xid: `nominatim-${foundPlace.place_id ?? foundPlace.lat}-${foundPlace.lon}`,
-      name: foundPlace.name || foundPlace.display_name || 'Névtelen',
-      rate: 1,
-      kinds: foundPlace.type || 'landmark',
-      point: {
-        lon: parseFloat(foundPlace.lon),
-        lat: parseFloat(foundPlace.lat),
-      },
-      address: foundPlace.display_name,
-      image: undefined,
-    };
+  private async resolveNominatimCoords(
+    query: string,
+    countryCode: string,
+    countryName?: string,
+  ): Promise<CoordinatesResult | null> {
+    try {
+      const results = await this.searchNominatim(query, {
+        limit: 1,
+        addressdetails: false,
+        countrycodes: countryCode,
+      });
+      const item = results?.[0];
+      if (item) {
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+          return { lat, lon, isCountry: true, countryCode, countryName };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
   }
 
-  private parseNumber(value: string | undefined, fallback: number) {
+  private parseNumber(value: string | undefined, fallback: number): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
