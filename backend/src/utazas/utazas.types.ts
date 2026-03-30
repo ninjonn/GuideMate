@@ -9,6 +9,8 @@ export type UtazasListItem = {
   programok_szama: number;
   jegyek_szama: number;
   ellenorzolistak_szama: number;
+  ellenorzolista_pipialt: number;
+  ellenorzolista_osszes: number;
 };
 
 export type UtazasListResponse = {
