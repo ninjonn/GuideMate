@@ -18,7 +18,7 @@ export const mapListItemToTrip = (item: UtazasListItem): Trip => {
     endDate: item.veg_datum,
     days: calcDays(item.kezdo_datum, item.veg_datum),
     programs: item.programok_szama,
-    checklistDone: 0,
-    checklistTotal: item.ellenorzolistak_szama ?? 0,
+    checklistDone: item.ellenorzolista_pipialt ?? 0,
+    checklistTotal: item.ellenorzolista_osszes ?? 0,
   };
 };

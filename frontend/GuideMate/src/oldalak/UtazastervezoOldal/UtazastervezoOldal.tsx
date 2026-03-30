@@ -5,7 +5,6 @@ import {
   Container,
   Heading,
   Text,
-  VStack,
   Grid,
   SimpleGrid,
 } from '@chakra-ui/react';
@@ -34,12 +33,14 @@ const UtazastervezoOldal: React.FC = () => {
     handleDeleteChecked,
     handleSaveChecklist,
     handleAddTripClick,
+    activeTripId,
+    setActiveTripId,
   } = useUtazastervezo();
 
   return (
     <Box
       minH="100vh"
-      w="100vw"
+      w="100%"
       bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
       color="white"
       pt={{ base: 24, md: 32 }}
@@ -53,6 +54,9 @@ const UtazastervezoOldal: React.FC = () => {
           {/* --- BAL OSZLOP: Utazó ellenőrzőlista --- */}
           <EllenorzoListaPanel
             checklist={checklist}
+            trips={trips}
+            activeTripId={activeTripId}
+            onTripChange={setActiveTripId}
             onToggleItem={handleToggleItem}
             onAddItem={handleAddItemClick}
             onDeleteChecked={handleDeleteChecked}

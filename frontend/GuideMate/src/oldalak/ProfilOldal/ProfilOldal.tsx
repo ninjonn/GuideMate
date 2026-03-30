@@ -233,7 +233,7 @@ const ProfilOldal: React.FC = () => {
     return (
       <Box
         minH="100vh"
-        w="100vw"
+        w="100%"
         bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
         position="relative"
         display="flex"
@@ -249,14 +249,16 @@ const ProfilOldal: React.FC = () => {
   return (
     <Box
       minH="100vh"
-      w="100vw"
+      w="100%"
       bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
       position="relative"
       overflow="hidden"
       color="white"
+      display="flex"
+      flexDirection="column"
       pt={{ base: 24, md: 32 }} // Hely a navbarnak
     >
-      <Center minH="100vh" px={4} pb={10} mt={-20}>
+      <Center flex="1" px={4} pb={10}>
         {profile && (
           <ProfilAdatok
             profile={profile}
