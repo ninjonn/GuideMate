@@ -98,7 +98,7 @@ const RegisztracioOldal: React.FC = () => {
   return (
     <Box
       minH="100vh"
-      w="100vw"
+      w="100%"
       bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
       position="relative"
       overflow="hidden"
@@ -108,7 +108,7 @@ const RegisztracioOldal: React.FC = () => {
       justifyContent="center"
       py={{ base: 8, md: 12 }} // legyen szellősebb, de a navbar ne takarja
     >
-      <Center minH="100vh" px={4} w="100%">
+      <Center flex="1" px={4} w="100%">
 
         {/* --- REGISZTRÁCIÓS KÁRTYA --- */}
         <Box

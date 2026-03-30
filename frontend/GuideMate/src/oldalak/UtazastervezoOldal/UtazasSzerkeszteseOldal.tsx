@@ -173,14 +173,16 @@ const UtazasSzerkeszteseOldal: React.FC = () => {
   return (
     <Box
       minH="100vh"
-      w="100vw"
+      w="100%"
       bgGradient="linear(to-tr, #A9E4FD 2%, #285CB0 80%)"
       color="white"
       position="relative"
       overflow="hidden"
+      display="flex"
+      flexDirection="column"
       pt={{ base: 20, md: 24 }}
     >
-      <Center minH="100vh" px={4} mt={-20}>
+      <Center flex="1" px={4}>
         <VStack
           w={{ base: '100%', sm: '520px' }}
           spacing={6}

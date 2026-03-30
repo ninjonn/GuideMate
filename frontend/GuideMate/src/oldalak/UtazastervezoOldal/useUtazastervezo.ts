@@ -66,20 +66,22 @@ export const useUtazastervezo = () => {
     }
   };
 
+  const isGeneralList = !activeTripId;
+
   const handleToggleItem = async (id: number) => {
     const current = checklist.find((item) => item.id === id);
     if (!current) return;
-    if (!activeListaId) {
-      toast({ title: "Nincs ellenőrzőlista", status: "warning", duration: 2000 });
-      return;
-    }
 
     const nextChecked = !current.isChecked;
-    setChecklist((prev) =>
-      prev.map((item) =>
+    setChecklist((prev) => {
+      const next = prev.map((item) =>
         item.id === id ? { ...item, isChecked: nextChecked } : item,
-      ),
-    );
+      );
+      if (isGeneralList) saveGeneralList(next);
+      return next;
+    });
+
+    if (isGeneralList) return;
 
     try {
       await updateListaElem(id, { kipipalva: nextChecked });
@@ -110,15 +112,24 @@ export const useUtazastervezo = () => {
       toast({ title: "Adj meg egy nevet!", status: "warning", duration: 2000 });
       return;
     }
-    if (!activeTripId) {
-      toast({ title: "Nincs kiválasztott utazás", status: "warning", duration: 2000 });
+
+    if (isGeneralList) {
+      const localId = -(Date.now());
+      const newItem = { id: localId, text: newItemName.trim(), isChecked: false };
+      setChecklist((prev) => {
+        const next = [...prev, newItem];
+        saveGeneralList(next);
+        return next;
+      });
+      checklistModal.onClose();
+      toast({ title: "Elem hozzáadva", status: "success", duration: 1500 });
       return;
     }
 
     try {
       let listaId = activeListaId;
       if (!listaId) {
-        const createdList = await createEllenorzoLista(activeTripId, {
+        const createdList = await createEllenorzoLista(activeTripId!, {
           lista_nev: "Utazó ellenőrzőlista",
         });
         listaId = createdList.lista_id;
@@ -155,8 +166,14 @@ export const useUtazastervezo = () => {
       toast({ title: "Nincs kijelölt elem", status: "warning", duration: 1000 });
       return;
     }
-    if (!activeListaId) {
-      toast({ title: "Nincs ellenőrzőlista", status: "warning", duration: 2000 });
+
+    if (isGeneralList) {
+      setChecklist((prev) => {
+        const next = prev.filter((item) => !item.isChecked);
+        saveGeneralList(next);
+        return next;
+      });
+      toast({ title: "Kijelölt elemek törölve", status: "success", duration: 1000 });
       return;
     }
 
@@ -177,12 +194,13 @@ export const useUtazastervezo = () => {
   };
 
   const handleSaveChecklist = async () => {
-    if (!activeTripId) {
-      toast({ title: "Nincs kiválasztott utazás", status: "warning", duration: 2000 });
+    if (isGeneralList) {
+      localStorage.setItem('generalChecklist', JSON.stringify(checklist));
+      toast({ title: "Általános lista mentve", status: "success", duration: 2000 });
       return;
     }
     try {
-      const res = await listEllenorzoLista(activeTripId);
+      const res = await listEllenorzoLista(activeTripId!);
       const lista = res.ellenorzolistak[0];
       if (!lista) {
         setChecklist([]);
@@ -241,12 +259,10 @@ export const useUtazastervezo = () => {
       try {
         setLoadingTrips(true);
         setLoadError(null);
-        const res = await listUtazasok();
+        const res = await listUtazasok({ rendez: 'datum' });
         const mapped: Trip[] = res.utazasok.map(mapListItemToTrip);
         setTrips(mapped);
-        if (!activeTripId && mapped.length > 0) {
-          setActiveTripId(mapped[0].id);
-        }
+        // alapértelmezetten "Általános lista" marad (activeTripId = null)
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Ismeretlen hiba";
         setLoadError(msg);
@@ -266,9 +282,29 @@ export const useUtazastervezo = () => {
   }, [toast]);
 
   useEffect(() => {
+    if (!activeTripId) return;
+    setTrips((prev) =>
+      prev.map((t) =>
+        t.id === activeTripId
+          ? {
+              ...t,
+              checklistDone: checklist.filter((i) => i.isChecked).length,
+              checklistTotal: checklist.length,
+            }
+          : t,
+      ),
+    );
+  }, [checklist, activeTripId]);
+
+  const saveGeneralList = (items: ChecklistItem[]) => {
+    localStorage.setItem('generalChecklist', JSON.stringify(items));
+  };
+
+  useEffect(() => {
     const loadChecklist = async () => {
       if (!activeTripId) {
-        setChecklist([]);
+        const saved = localStorage.getItem('generalChecklist');
+        setChecklist(saved ? JSON.parse(saved) : initialChecklist);
         setActiveListaId(null);
         return;
       }
@@ -320,5 +356,7 @@ export const useUtazastervezo = () => {
     handleDeleteChecked,
     handleSaveChecklist,
     handleAddTripClick,
+    activeTripId,
+    setActiveTripId,
   };
 };
