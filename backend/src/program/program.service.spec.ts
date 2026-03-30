@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { PrismaService } from 'src/prisma.service';
-import { ParticipantService } from 'src/participant.service';
 import { ProgramService } from './program.service';
 
 describe('ProgramService', () => {
@@ -19,6 +18,9 @@ describe('ProgramService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    programLatnivalo: {
+      deleteMany: jest.fn(),
+    },
     utazas: {
       findUnique: jest.fn(),
       update: jest.fn(),
@@ -26,13 +28,7 @@ describe('ProgramService', () => {
     $transaction: jest.fn(),
   };
 
-  const participantService = new ParticipantService(
-    prismaMock as unknown as PrismaService,
-  );
-  const service = new ProgramService(
-    prismaMock as unknown as PrismaService,
-    participantService,
-  );
+  const service = new ProgramService(prismaMock as unknown as PrismaService);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -242,7 +238,22 @@ describe('ProgramService', () => {
       utazas_id: 10,
       felhasznalo_id: 1,
     });
-    prismaMock.program.delete.mockResolvedValue({} as never);
+    prismaMock.$transaction.mockImplementation(
+      (
+        callback: (tx: {
+          programLatnivalo: { deleteMany: () => Promise<unknown> };
+          program: { delete: () => Promise<unknown> };
+        }) => Promise<unknown>,
+      ) =>
+        callback({
+          programLatnivalo: {
+            deleteMany: () => Promise.resolve({}),
+          },
+          program: {
+            delete: () => Promise.resolve({}),
+          },
+        }),
+    );
 
     const result = await service.deleteProgram(1, 1);
 
