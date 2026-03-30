@@ -6,14 +6,18 @@ import {
   Divider,
   Heading,
   HStack,
+  Select,
   Text,
   VStack,
   type BoxProps,
 } from '@chakra-ui/react';
-import type { ChecklistItem } from '../utazastervezo.types';
+import type { ChecklistItem, Trip } from '../utazastervezo.types';
 
 type EllenorzoListaPanelProps = {
   checklist: ChecklistItem[];
+  trips: Trip[];
+  activeTripId: number | null;
+  onTripChange: (id: number | null) => void;
   onToggleItem: (id: number) => void;
   onAddItem: () => void;
   onDeleteChecked: () => void;
@@ -23,6 +27,9 @@ type EllenorzoListaPanelProps = {
 
 const EllenorzoListaPanel: React.FC<EllenorzoListaPanelProps> = ({
   checklist,
+  trips,
+  activeTripId,
+  onTripChange,
   onToggleItem,
   onAddItem,
   onDeleteChecked,
@@ -31,9 +38,32 @@ const EllenorzoListaPanel: React.FC<EllenorzoListaPanelProps> = ({
 }) => {
   return (
     <Box {...glassStyle} p={6} height="fit-content">
-      <Heading size="md" mb={6} textAlign="center">
+      <Heading size="md" mb={4} textAlign="center">
         Utazó ellenőrzőlista
       </Heading>
+
+      <Select
+        mb={4}
+        bg="whiteAlpha.300"
+        borderColor="whiteAlpha.400"
+        color="white"
+        _hover={{ borderColor: 'whiteAlpha.600' }}
+        value={activeTripId ?? ''}
+        onChange={(e) => {
+          const val = e.target.value;
+          onTripChange(val === '' ? null : Number(val));
+        }}
+        sx={{
+          option: { color: 'black' },
+        }}
+      >
+        <option value="">Általános lista</option>
+        {trips.map((trip) => (
+          <option key={trip.id} value={trip.id}>
+            {trip.title}
+          </option>
+        ))}
+      </Select>
 
       <VStack spacing={4} align="stretch">
         <HStack>

@@ -1,5 +1,15 @@
 {
-  "dependencies": {
-    "@chakra-ui/icons": "^2.2.4"
-  }
+  "name": "guidemate",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
