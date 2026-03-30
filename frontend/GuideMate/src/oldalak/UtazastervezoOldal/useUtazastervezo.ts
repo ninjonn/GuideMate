@@ -6,7 +6,6 @@ import { createListaElem, deleteListaElem, updateListaElem } from '../../feature
 import { deleteUtazas, listUtazasok } from '../../features/utazas/utazas.api';
 import type { ChecklistItem, Trip } from './utazastervezo.types';
 import { mapListItemToTrip } from './utazastervezo.utils';
-import { initialChecklist } from './utazastervezo.constants';
 
 export const useUtazastervezo = () => {
   const navigate = useNavigate();
@@ -15,7 +14,7 @@ export const useUtazastervezo = () => {
 
   const checklistModal = useDisclosure();
 
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(initialChecklist);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loadingTrips, setLoadingTrips] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -304,7 +303,7 @@ export const useUtazastervezo = () => {
     const loadChecklist = async () => {
       if (!activeTripId) {
         const saved = localStorage.getItem('generalChecklist');
-        setChecklist(saved ? JSON.parse(saved) : initialChecklist);
+        setChecklist(saved ? JSON.parse(saved) : []);
         setActiveListaId(null);
         return;
       }

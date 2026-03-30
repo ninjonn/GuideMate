@@ -72,28 +72,20 @@ export class UtazasService {
         take: limit,
         include: {
           _count: { select: { programok: true, listak: true } },
-          listak: {
-            include: { elemek: { select: { kipipalva: true } } },
-          },
         },
       }),
     ]);
 
-    const utazasok = rows.map((row) => {
-      const allItems = row.listak.flatMap((l) => l.elemek);
-      return {
-        azonosito: row.utazas_id,
-        cim: row.nev,
-        leiras: row.leiras,
-        kezdo_datum: this.formatDate(row.kezdo_datum),
-        veg_datum: this.formatDate(row.veg_datum),
-        programok_szama: row._count.programok,
-        jegyek_szama: 0,
-        ellenorzolistak_szama: row._count.listak,
-        ellenorzolista_pipialt: allItems.filter((e) => e.kipipalva).length,
-        ellenorzolista_osszes: allItems.length,
-      };
-    });
+    const utazasok = rows.map((row) => ({
+      azonosito: row.utazas_id,
+      cim: row.nev,
+      leiras: row.leiras,
+      kezdo_datum: this.formatDate(row.kezdo_datum),
+      veg_datum: this.formatDate(row.veg_datum),
+      programok_szama: row._count.programok,
+      jegyek_szama: 0,
+      ellenorzolistak_szama: row._count.listak,
+    }));
 
     return {
       utazasok,
