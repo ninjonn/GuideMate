@@ -1,5 +1,12 @@
 import { Transform, type TransformFnParams } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 // Query parameterek egyszeru szam parsolasa.
 const parseNumber = ({ value }: TransformFnParams): number | undefined => {

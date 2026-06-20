@@ -1,6 +1,10 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-let authToken: string | null = null;
+// A tokent szinkron modon toltjuk be modulbetolteskor, hogy a vedett hivasok
+// (pl. terkep) oldalfrissites utan is azonnal elerjek a tokent (ne legyen
+// verseny az AppProviders useEffect-jevel).
+let authToken: string | null =
+  typeof localStorage !== "undefined" ? localStorage.getItem("gm_token") : null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;

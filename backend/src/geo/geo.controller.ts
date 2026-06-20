@@ -1,18 +1,18 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { Public } from 'src/auth/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 import { GeoService } from './geo.service';
 
+// Szigorubb limit a kulso (Geoapify) API koltseg ellen: 30 keres / perc / IP.
+@Throttle({ default: { limit: 30, ttl: 60000 } })
 @Controller('api/geo')
 export class GeoController {
   constructor(private readonly geoService: GeoService) {}
 
-  @Public()
   @Get('coordinates')
   getCoordinates(@Query('query') query: string) {
     return this.geoService.getCoordinates(query);
   }
 
-  @Public()
   @Get('places')
   getPlaces(
     @Query('lat') lat: string,
@@ -32,7 +32,6 @@ export class GeoController {
     });
   }
 
-  @Public()
   @Get('search')
   searchPlaces(
     @Query('text') text: string,

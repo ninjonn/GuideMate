@@ -30,7 +30,9 @@ describe('EllenorzoListaService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prismaMock.$transaction.mockImplementation((cb: any) => cb(prismaMock));
+    prismaMock.$transaction.mockImplementation(
+      (cb: (tx: typeof prismaMock) => unknown) => cb(prismaMock),
+    );
   });
 
   it('listForTrip – tiltva, ha nem résztvevő', async () => {

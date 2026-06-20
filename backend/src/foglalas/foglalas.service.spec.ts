@@ -16,7 +16,9 @@ describe('FoglalasService', () => {
     },
   };
 
-  const service = new FoglalasService(prisma as any);
+  const service = new FoglalasService(
+    prisma as unknown as ConstructorParameters<typeof FoglalasService>[0],
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();

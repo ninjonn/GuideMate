@@ -38,23 +38,33 @@ export class ImagesService {
     return { url };
   }
 
-  private async fetchFromPexels(apiKey: string, query: string): Promise<string | null> {
+  private async fetchFromPexels(
+    apiKey: string,
+    query: string,
+  ): Promise<string | null> {
     const params = new URLSearchParams({
       query,
       per_page: '1',
       orientation: 'landscape',
     });
-    const res = await fetch(`https://api.pexels.com/v1/search?${params.toString()}`, {
-      headers: { Authorization: apiKey },
-    });
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?${params.toString()}`,
+      {
+        headers: { Authorization: apiKey },
+      },
+    );
     if (!res.ok) {
       return null;
     }
     const data = (await res.json()) as {
-      photos?: Array<{ src?: { medium?: string; large?: string; landscape?: string } }>;
+      photos?: Array<{
+        src?: { medium?: string; large?: string; landscape?: string };
+      }>;
     };
     const photo = data.photos?.[0];
-    return photo?.src?.medium || photo?.src?.landscape || photo?.src?.large || null;
+    return (
+      photo?.src?.medium || photo?.src?.landscape || photo?.src?.large || null
+    );
   }
 
   private setCache(key: string, url: string | null) {
@@ -72,9 +82,9 @@ export class ImagesService {
       }
     }
     if (this.cache.size < this.maxCacheSize) return;
-    const firstKey = this.cache.keys().next().value;
-    if (firstKey) {
+    for (const firstKey of this.cache.keys()) {
       this.cache.delete(firstKey);
+      break;
     }
   }
 }

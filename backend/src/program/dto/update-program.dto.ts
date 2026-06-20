@@ -1,5 +1,11 @@
 import { Transform, type TransformFnParams } from 'class-transformer';
-import { IsDateString, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 // Opcionalis mezok trimelese.
 const trimOptional = ({ value }: TransformFnParams): string | undefined =>

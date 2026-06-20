@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Container } from "@chakra-ui/react";
 import { FaBus, FaMapMarkerAlt, FaFolderOpen } from "react-icons/fa";
 import FeatureSzekcio from "./komponensek/FeatureSzekcio";

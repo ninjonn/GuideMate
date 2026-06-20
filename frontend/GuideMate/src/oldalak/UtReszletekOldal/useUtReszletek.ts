@@ -55,7 +55,7 @@ export const useUtReszletek = () => {
     );
     try {
       await updateListaElem(itemId, { kipipalva: nextChecked });
-    } catch (err) {
+    } catch {
       setChecklist((prev) =>
         prev.map((item) => (item.id === itemId ? { ...item, checked: current.checked } : item)),
       );
@@ -74,7 +74,7 @@ export const useUtReszletek = () => {
       await updateUtazas(utazasId, { veg_datum: nextEnd });
       await loadTrip(utazasId);
       toast({ title: 'Új nap hozzáadva', status: 'success' });
-    } catch (err) {
+    } catch {
       toast({ title: 'Hiba', status: 'error' });
     }
   };
@@ -94,7 +94,7 @@ export const useUtReszletek = () => {
       setTripEnd(nextEnd);
       await loadTrip(utazasId);
       toast({ title: 'Napok törölve', status: 'success' });
-    } catch (err) {
+    } catch {
       toast({ title: 'Hiba', status: 'error' });
     }
   };
@@ -123,7 +123,7 @@ export const useUtReszletek = () => {
       await deleteProgram(eventId);
       await loadTrip(Number(id));
       toast({ title: 'Törölve', status: 'success' });
-    } catch (err) {
+    } catch {
       toast({ title: 'Hiba', status: 'error' });
     }
   };
@@ -177,7 +177,7 @@ export const useUtReszletek = () => {
       link.href = canvas.toDataURL('image/png');
       link.click();
       toast({ title: 'Exportálva', status: 'success' });
-    } catch (err) {
+    } catch {
       toast({ title: 'Nem sikerült exportálni', status: 'error' });
     } finally {
       element.style.overflow = prevOverflow;
@@ -226,7 +226,7 @@ export const useUtReszletek = () => {
       eventModal.onClose();
       setNewEventDescription("");
       toast({ title: 'Siker', status: 'success' });
-    } catch (err) {
+    } catch {
       toast({ title: 'Hiba', status: 'error' });
     }
   };
@@ -253,7 +253,7 @@ export const useUtReszletek = () => {
         { id: createdItem.elem_id, text: createdItem.megnevezes, checked: false },
       ]);
       checklistAddModal.onClose();
-    } catch (err) {
+    } catch {
       toast({ title: 'Hiba', status: 'error' });
     }
   };
@@ -266,7 +266,7 @@ export const useUtReszletek = () => {
       await Promise.all(toDelete.map((item) => deleteListaElem(item.id)));
       setChecklist((prev) => prev.filter((item) => !item.checked));
       toast({ title: 'Törölve', status: 'success' });
-    } catch (err) {
+    } catch {
       toast({ title: 'Hiba', status: 'error' });
     }
   };
@@ -316,7 +316,7 @@ export const useUtReszletek = () => {
           })),
         );
       }
-    } catch (e) {
+    } catch {
       /* ignore */
     }
   };

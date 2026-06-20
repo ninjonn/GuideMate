@@ -23,7 +23,7 @@ const fetchPlaceImage = async (place: Place): Promise<string | undefined> => {
     const res = await apiFetch<ImageProxyResponse>(
       `/api/images?query=${encodeURIComponent(query)}`,
       {},
-      false,
+      true,
     );
     return res.url ?? undefined;
   } catch {

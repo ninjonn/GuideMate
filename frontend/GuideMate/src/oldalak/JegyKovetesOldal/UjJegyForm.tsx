@@ -85,7 +85,7 @@ const UjJegyForm: React.FC = () => {
           return;
         }
         if (isMounted) applyFoglalas(found);
-      } catch (err: unknown) {
+      } catch {
         toast({ title: "Hiba", description: "Nem sikerült betölteni", status: "error" });
       } finally {
         if (isMounted) setFetching(false);
@@ -133,8 +133,9 @@ const UjJegyForm: React.FC = () => {
 
       toast({ title: "Sikeres mentés", status: "success", duration: 2000 });
       navigate("/jegykovetes");
-    } catch (err: any) {
-      toast({ title: "Hiba", description: err.message || "Sikertelen mentés", status: "error" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sikertelen mentés";
+      toast({ title: "Hiba", description: message, status: "error" });
     } finally {
       setLoading(false);
     }

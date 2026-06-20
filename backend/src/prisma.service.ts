@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -14,9 +14,9 @@ export class PrismaService
       throw new Error('A DATABASE_URL kötelező a Prisma inicializálásához.');
     }
 
-    // MariaDB adapterrel inicializaljuk a Prisma klienst.
+    // Postgres (Supabase) adapterrel inicializaljuk a Prisma klienst.
     // Az adapter a pool kezeleset is biztositja.
-    const adapter = new PrismaMariaDb(databaseUrl);
+    const adapter = new PrismaPg({ connectionString: databaseUrl });
     super({ adapter });
   }
 

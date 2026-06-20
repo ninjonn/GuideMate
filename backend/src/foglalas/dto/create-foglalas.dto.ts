@@ -1,5 +1,11 @@
 import { Transform, type TransformFnParams } from 'class-transformer';
-import { IsDateString, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 // Kotelezo mezok trimelese.
 const trimRequired = ({ value }: TransformFnParams): string =>
@@ -15,7 +21,7 @@ export class CreateFoglalasDto {
   @IsString()
   @IsIn(['repulo', 'szallas', 'busz', 'vonat', 'auto'])
   @Transform(trimRequired)
-  tipus: 'repulo' | 'szallas' | 'busz' | 'vonat' | 'auto';
+  tipus?: 'repulo' | 'szallas' | 'busz' | 'vonat' | 'auto';
 
   // Repulo: indulasi hely.
   @IsOptional()

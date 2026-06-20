@@ -57,7 +57,9 @@ describe("UtazastervezoOldal", () => {
 
     renderWithChakra(<UtazastervezoOldal />);
 
-    expect(screen.getByText("Balaton")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Balaton" }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "új út hozzáadása" }));
     expect(handleAddTripClick).toHaveBeenCalledTimes(1);

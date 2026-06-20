@@ -60,10 +60,12 @@ export const router = createBrowserRouter([
   {
     path: "/terkep",
     element: (
-      <>
-        <NavigaciosSav />
-        <TerkepOldal />
-      </>
+      <AuthGuard>
+        <>
+          <NavigaciosSav />
+          <TerkepOldal />
+        </>
+      </AuthGuard>
     ),
   },
   {

@@ -39,6 +39,10 @@ export const mapCreateDtoToData = (
   kezdo_datum: Date | null;
   veg_datum: Date | null;
 } => {
+  if (!dto.tipus) {
+    throw new BadRequestException('Hianyzo foglalas tipus.');
+  }
+
   if (isTravelType(dto.tipus)) {
     if (
       !dto.indulasi_hely ||

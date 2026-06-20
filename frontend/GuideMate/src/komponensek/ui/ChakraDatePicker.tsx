@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Input,
@@ -34,7 +34,12 @@ const ChakraDatePicker: React.FC<ChakraDatePickerProps> = ({
   const [hour, setHour] = useState(12);
   const [minute, setMinute] = useState(0);
 
-  useEffect(() => {
+  // A megnyitáskor szinkronizáljuk a belső állapotot a kiválasztott dátumhoz.
+  const handleTriggerClick = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
     if (selectedDate) {
       setCurrentMonth(selectedDate);
       setHour(selectedDate.getHours());
@@ -43,7 +48,8 @@ const ChakraDatePicker: React.FC<ChakraDatePickerProps> = ({
       setHour(12);
       setMinute(0);
     }
-  }, [selectedDate, isOpen]);
+    setIsOpen(true);
+  };
 
   const onDateClick = (day: Date) => {
     let newDate = day;
@@ -96,7 +102,7 @@ const ChakraDatePicker: React.FC<ChakraDatePickerProps> = ({
             }
             placeholder={placeholder}
             readOnly
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={handleTriggerClick}
             {...glassInputStyle}
           />
           <CalendarIcon

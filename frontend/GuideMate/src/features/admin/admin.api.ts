@@ -4,7 +4,7 @@ export type AdminUserListItem = {
   azonosito: number;
   nev: string;
   email: string;
-  szerepkor: string;
+  szerepkor: "admin" | "user";
   regisztracio_datum: string;
   utazasok_szama: number;
 };
@@ -34,7 +34,7 @@ export type AdminUserRoleResponse = {
   azonosito: number;
   nev: string;
   email: string;
-  szerepkor: string;
+  szerepkor: "admin" | "user";
   sikeres: boolean;
   uzenet: string;
 };

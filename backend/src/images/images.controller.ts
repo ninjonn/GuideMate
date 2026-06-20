@@ -1,12 +1,13 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
-import { Public } from 'src/auth/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 import { ImagesService } from './images.service';
 
+// Szigorubb limit a kulso (Pexels) API koltseg ellen: 30 keres / perc / IP.
+@Throttle({ default: { limit: 30, ttl: 60000 } })
 @Controller('api/images')
 export class ImagesController {
   constructor(private readonly imagesService: ImagesService) {}
 
-  @Public()
   @Get()
   async getImage(@Query('query') query?: string) {
     const normalized = query?.trim();

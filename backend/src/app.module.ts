@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -18,6 +20,8 @@ import { GeoModule } from './geo/geo.module';
   imports: [
     // Globalis config + DB + feature modulok, innen indul az app.
     ConfigModule.forRoot({ isGlobal: true }),
+    // Alapertelmezett rate limit: 120 keres / perc / IP (vedelem a visszaeles ellen).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     PrismaModule,
     // Auth es users modulok a bejelentkezeshez es profilhoz.
     AuthModule,
@@ -33,6 +37,10 @@ import { GeoModule } from './geo/geo.module';
     GeoModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Globalis rate limit guard minden vegpontra (a @Public utvonalakra is).
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

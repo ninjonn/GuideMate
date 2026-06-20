@@ -17,7 +17,10 @@ describe('AuthService', () => {
     signAsync: jest.fn(),
   } as unknown as JwtService;
 
-  const service = new AuthService(usersService as any, jwtService);
+  const service = new AuthService(
+    usersService as unknown as ConstructorParameters<typeof AuthService>[0],
+    jwtService,
+  );
 
   const bcryptCompare = bcrypt.compare as jest.Mock;
   const bcryptHash = bcrypt.hash as jest.Mock;

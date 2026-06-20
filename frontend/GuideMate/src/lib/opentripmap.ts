@@ -29,7 +29,11 @@ export async function getCoordinates(cityName: string): Promise<CoordinatesResul
   console.log(`🔍 Keresés (backend): ${cityName}`);
   try {
     const query = buildQueryParams({ query: cityName });
-    return await apiFetch<CoordinatesResult>(`/api/geo/coordinates?${query}`);
+    return await apiFetch<CoordinatesResult>(
+      `/api/geo/coordinates?${query}`,
+      {},
+      true,
+    );
   } catch (error) {
     console.error("❌ Koordináta keresés hiba:", error);
     throw error;
@@ -46,7 +50,7 @@ export async function searchAndFilterPlaces(
 
   try {
     const query = buildQueryParams({ text: placeName, lat, lon });
-    const places = await apiFetch<Place[]>(`/api/geo/search?${query}`);
+    const places = await apiFetch<Place[]>(`/api/geo/search?${query}`, {}, true);
     return await enrichPlacesWithImages(places);
   } catch (error) {
     console.error("❌ Hely keresés hiba:", error);
@@ -78,7 +82,7 @@ export async function getPlaces(
       offset: options.offset,
       radius: options.radius,
     });
-    const res = await apiFetch<PlacesResult>(`/api/geo/places?${query}`);
+    const res = await apiFetch<PlacesResult>(`/api/geo/places?${query}`, {}, true);
     const itemsWithImages = await enrichPlacesWithImages(res.items ?? []);
     return { items: itemsWithImages, hasMore: res.hasMore ?? false };
   } catch (error) {
