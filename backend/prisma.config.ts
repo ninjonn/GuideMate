@@ -10,6 +10,8 @@ export default defineConfig({
   },
   datasource: {
     url: env('DATABASE_URL'),
-    shadowDatabaseUrl: env('SHADOW_DATABASE_URL'),
+    // A shadowDatabaseUrl csak a lokalis 'prisma migrate dev'-hez kellene, a
+    // 'db push'/'generate'/futo apphoz nem. Kivettuk, hogy a deploy (Render)
+    // ne bukjon el hianyzo SHADOW_DATABASE_URL miatt.
   },
 });
