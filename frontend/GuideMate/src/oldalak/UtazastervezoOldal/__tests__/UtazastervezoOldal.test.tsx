@@ -45,6 +45,7 @@ const baseTrips: Trip[] = [
     programs: 3,
     checklistDone: 1,
     checklistTotal: 4,
+    sajatSzerep: "tulajdonos",
   },
 ];
 
