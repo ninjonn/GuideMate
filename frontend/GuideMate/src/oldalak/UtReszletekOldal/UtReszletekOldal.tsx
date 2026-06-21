@@ -17,6 +17,7 @@ import UjEsemenyModal from './komponensek/UjEsemenyModal';
 import EllenorzoListaPanel from './komponensek/EllenorzoListaPanel';
 import EllenorzoListaUjElemModal from './komponensek/EllenorzoListaUjElemModal';
 import MobilEllenorzoListaModal from './komponensek/MobilEllenorzoListaModal';
+import ResztvevoKezeles from './komponensek/ResztvevoKezeles';
 import { glassButtonStyle, glassStyleCommon } from './utReszletek.styles';
 import { useUtReszletek } from './useUtReszletek';
 
@@ -29,6 +30,9 @@ const UtReszletekOldal: React.FC = () => {
     sortedEvents,
     totalDurationString,
     checklist,
+    resztvevok,
+    sajatSzerep,
+    resztvevokLoading,
     newEventTitle,
     newEventStart,
     newEventEnd,
@@ -57,7 +61,12 @@ const UtReszletekOldal: React.FC = () => {
     confirmAddChecklistItem,
     handleDeleteChecked,
     handleExportDay,
+    handleInvite,
+    handleRemoveParticipant,
+    handleChangeRole,
   } = useUtReszletek();
+
+  const canEdit = sajatSzerep === 'tulajdonos' || sajatSzerep === 'szerkeszto';
 
   return (
     <Box
@@ -114,8 +123,12 @@ const UtReszletekOldal: React.FC = () => {
                 data-export-hide
               >
                 <Button {...glassButtonStyle} w={{ base: "100%", md: "180px" }} onClick={handleBack}>Visszalépés</Button>
-                <Button bg="#1E2A4F" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#151d36" }} onClick={handleAddDay} px={6}>+ új nap hozzáadása</Button>
-                <Button bg="#3B49DF" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#2b36a8" }} onClick={handleOpenNewEvent} rightIcon={<ChevronDownIcon />} px={6}>+ új esemény</Button>
+                {canEdit && (
+                  <Button bg="#1E2A4F" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#151d36" }} onClick={handleAddDay} px={6}>+ új nap hozzáadása</Button>
+                )}
+                {canEdit && (
+                  <Button bg="#3B49DF" color="white" w={{ base: "100%", md: "auto" }} _hover={{ bg: "#2b36a8" }} onClick={handleOpenNewEvent} rightIcon={<ChevronDownIcon />} px={6}>+ új esemény</Button>
+                )}
               </Stack>
 
               <Idovonal
@@ -147,6 +160,17 @@ const UtReszletekOldal: React.FC = () => {
                   onToggle={handleToggleCheck}
                   onAdd={handleAddChecklistItem}
                   onDeleteChecked={handleDeleteChecked}
+                />
+              </Box>
+
+              <Box {...glassStyleCommon} p={6} w="100%">
+                <ResztvevoKezeles
+                  resztvevok={resztvevok}
+                  sajatSzerep={sajatSzerep}
+                  loading={resztvevokLoading}
+                  onInvite={handleInvite}
+                  onRemove={handleRemoveParticipant}
+                  onChangeRole={handleChangeRole}
                 />
               </Box>
             </VStack>

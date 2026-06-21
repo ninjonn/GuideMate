@@ -11,6 +11,7 @@ export type UtazasListItem = {
   ellenorzolistak_szama: number;
   ellenorzolista_pipialt: number;
   ellenorzolista_osszes: number;
+  sajat_szerep: string;
 };
 
 export type UtazasListResponse = {
@@ -74,4 +75,31 @@ export type UtazasDeleteResponse = {
   sikeres: boolean;
   uzenet: string;
   torolt_utazas_id: number;
+};
+
+export type ResztvevoItem = {
+  felhasznalo_id: number;
+  nev: string;
+  email: string;
+  szerep: string;
+};
+
+export type ResztvevoListResponse = {
+  resztvevok: ResztvevoItem[];
+  sajat_szerep: string;
+};
+
+export type MeghivoResponse = {
+  sikeres: boolean;
+  uzenet: string;
+};
+
+export type EltavolitasResponse = {
+  sikeres: boolean;
+  uzenet: string;
+};
+
+export type SzerepValtoztatásResponse = {
+  sikeres: boolean;
+  uzenet: string;
 };

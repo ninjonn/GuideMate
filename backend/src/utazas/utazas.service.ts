@@ -9,6 +9,8 @@ import { ParticipantService } from 'src/participant.service';
 import { UtazasQueryDto } from './dto/utazas-query.dto';
 import { CreateUtazasDto } from './dto/create-utazas.dto';
 import { UpdateUtazasDto } from './dto/update-utazas.dto';
+import { MeghivoDto } from './dto/meghivo.dto';
+import { SzerepValtoztatasDto } from './dto/szerep-valtoztatas.dto';
 import type {
   UtazasListResponse,
   UtazasDetailResponse,
@@ -16,6 +18,10 @@ import type {
   UtazasCreateResponse,
   UtazasUpdateResponse,
   UtazasDeleteResponse,
+  ResztvevoListResponse,
+  MeghivoResponse,
+  EltavolitasResponse,
+  SzerepValtoztatásResponse,
 } from './utazas.types';
 
 export type {
@@ -24,6 +30,10 @@ export type {
   UtazasCreateResponse,
   UtazasUpdateResponse,
   UtazasDeleteResponse,
+  ResztvevoListResponse,
+  MeghivoResponse,
+  EltavolitasResponse,
+  SzerepValtoztatásResponse,
 } from './utazas.types';
 
 @Injectable()
@@ -75,6 +85,10 @@ export class UtazasService {
           listak: {
             include: { elemek: { select: { kipipalva: true } } },
           },
+          resztvevok: {
+            where: { felhasznalo_id: userId },
+            select: { szerep: true },
+          },
         },
       }),
     ]);
@@ -92,6 +106,7 @@ export class UtazasService {
         ellenorzolistak_szama: row._count.listak,
         ellenorzolista_pipialt: allItems.filter((e) => e.kipipalva).length,
         ellenorzolista_osszes: allItems.length,
+        sajat_szerep: row.resztvevok[0]?.szerep ?? 'szerkeszto',
       };
     });
 
@@ -158,7 +173,11 @@ export class UtazasService {
         kezdo_datum: new Date(dto.kezdo_datum),
         veg_datum: new Date(dto.veg_datum),
         resztvevok: {
-          create: { felhasznalo_id: userId, csatlakozas_ideje: new Date() },
+          create: {
+            felhasznalo_id: userId,
+            szerep: 'tulajdonos',
+            csatlakozas_ideje: new Date(),
+          },
         },
       },
     });
@@ -178,7 +197,7 @@ export class UtazasService {
     utazasId: number,
     dto: UpdateUtazasDto,
   ): Promise<UtazasUpdateResponse> {
-    await this.participantService.ensureParticipant(utazasId, userId);
+    await this.participantService.ensureEditor(utazasId, userId);
 
     const data: {
       nev?: string;
@@ -215,7 +234,7 @@ export class UtazasService {
     userId: number,
     utazasId: number,
   ): Promise<UtazasDeleteResponse> {
-    await this.participantService.ensureParticipant(utazasId, userId);
+    await this.participantService.ensureOwner(utazasId, userId);
 
     await this.prisma.$transaction(async (tx) => {
       const listak = await tx.ellenorzoLista.findMany({
@@ -239,6 +258,121 @@ export class UtazasService {
       uzenet: 'Utazas sikeresen torolve',
       torolt_utazas_id: utazasId,
     };
+  }
+
+  async listParticipants(
+    userId: number,
+    utazasId: number,
+  ): Promise<ResztvevoListResponse> {
+    await this.participantService.ensureParticipant(utazasId, userId);
+    const sajatSzerep = await this.participantService.getRole(utazasId, userId);
+    const rows = await this.prisma.utazasResztvevo.findMany({
+      where: { utazas_id: utazasId },
+      include: {
+        felhasznalo: {
+          select: { felhasznalo_id: true, nev: true, email: true },
+        },
+      },
+    });
+    return {
+      resztvevok: rows.map((r) => ({
+        felhasznalo_id: r.felhasznalo_id,
+        nev: r.felhasznalo.nev,
+        email: r.felhasznalo.email,
+        szerep: r.szerep ?? 'szerkeszto',
+      })),
+      sajat_szerep: sajatSzerep ?? 'szerkeszto',
+    };
+  }
+
+  async inviteByEmail(
+    ownerId: number,
+    utazasId: number,
+    dto: MeghivoDto,
+  ): Promise<MeghivoResponse> {
+    await this.participantService.ensureOwner(utazasId, ownerId);
+    const user = await this.prisma.felhasznalo.findUnique({
+      where: { email: dto.email },
+    });
+    if (!user) throw new NotFoundException('Felhasznalo nem talalhato.');
+    if (user.felhasznalo_id === ownerId) {
+      throw new BadRequestException('Sajat magad nem hivhatod meg.');
+    }
+    const existing = await this.prisma.utazasResztvevo.findFirst({
+      where: { utazas_id: utazasId, felhasznalo_id: user.felhasznalo_id },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'Ez a felhasznalo mar resztvevoje az utazasnak.',
+      );
+    }
+    await this.prisma.utazasResztvevo.create({
+      data: {
+        utazas_id: utazasId,
+        felhasznalo_id: user.felhasznalo_id,
+        szerep: dto.szerep,
+        csatlakozas_ideje: new Date(),
+      },
+    });
+    return { sikeres: true, uzenet: `${user.nev} meghivva.` };
+  }
+
+  async changeParticipantRole(
+    ownerId: number,
+    utazasId: number,
+    targetId: number,
+    dto: SzerepValtoztatasDto,
+  ): Promise<SzerepValtoztatásResponse> {
+    await this.participantService.ensureOwner(utazasId, ownerId);
+    const target = await this.prisma.utazasResztvevo.findFirst({
+      where: { utazas_id: utazasId, felhasznalo_id: targetId },
+    });
+    if (!target) {
+      throw new NotFoundException(
+        'A felhasznalo nem resztvevoje az utazasnak.',
+      );
+    }
+    if (target.szerep === 'tulajdonos') {
+      throw new BadRequestException('A tulajdonos szerepe nem valtoztatható.');
+    }
+    await this.prisma.utazasResztvevo.update({
+      where: {
+        utazas_id_felhasznalo_id: {
+          utazas_id: utazasId,
+          felhasznalo_id: targetId,
+        },
+      },
+      data: { szerep: dto.szerep },
+    });
+    return { sikeres: true, uzenet: 'Szerep sikeresen módosítva.' };
+  }
+
+  async removeParticipant(
+    ownerId: number,
+    utazasId: number,
+    targetId: number,
+  ): Promise<EltavolitasResponse> {
+    await this.participantService.ensureOwner(utazasId, ownerId);
+    const target = await this.prisma.utazasResztvevo.findFirst({
+      where: { utazas_id: utazasId, felhasznalo_id: targetId },
+    });
+    if (!target) {
+      throw new NotFoundException(
+        'A felhasznalo nem resztvevoje az utazasnak.',
+      );
+    }
+    if (target.szerep === 'tulajdonos') {
+      throw new BadRequestException('A tulajdonost nem lehet eltavolitani.');
+    }
+    await this.prisma.utazasResztvevo.delete({
+      where: {
+        utazas_id_felhasznalo_id: {
+          utazas_id: utazasId,
+          felhasznalo_id: targetId,
+        },
+      },
+    });
+    return { sikeres: true, uzenet: 'Resztvevo eltavolitva.' };
   }
 
   private formatDate(date: Date): string {

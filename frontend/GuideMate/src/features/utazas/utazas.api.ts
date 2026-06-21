@@ -12,6 +12,7 @@ export type UtazasListItem = {
   ellenorzolistak_szama: number;
   ellenorzolista_pipialt: number;
   ellenorzolista_osszes: number;
+  sajat_szerep: string;
 };
 
 export type UtazasListResponse = {
@@ -115,6 +116,58 @@ export function deleteUtazas(id: number) {
   return apiFetch<{ sikeres: boolean; uzenet: string; torolt_utazas_id: number }>(
     `/api/utazasok/${id}`,
     { method: "DELETE" },
+    true,
+  );
+}
+
+export type ResztvevoItem = {
+  felhasznalo_id: number;
+  nev: string;
+  email: string;
+  szerep: string;
+};
+
+export type ResztvevoListResponse = {
+  resztvevok: ResztvevoItem[];
+  sajat_szerep: string;
+};
+
+export function listResztvevok(utazasId: number) {
+  return apiFetch<ResztvevoListResponse>(
+    `/api/utazasok/${utazasId}/resztvevok`,
+    {},
+    true,
+  );
+}
+
+export function meghivResztvevo(
+  utazasId: number,
+  email: string,
+  szerep: "szerkeszto" | "megtekineto",
+) {
+  return apiFetch<{ sikeres: boolean; uzenet: string }>(
+    `/api/utazasok/${utazasId}/meghivok`,
+    { method: "POST", body: JSON.stringify({ email, szerep }) },
+    true,
+  );
+}
+
+export function eltavolitResztvevo(utazasId: number, targetId: number) {
+  return apiFetch<{ sikeres: boolean; uzenet: string }>(
+    `/api/utazasok/${utazasId}/resztvevok/${targetId}`,
+    { method: "DELETE" },
+    true,
+  );
+}
+
+export function valtoztatSzerep(
+  utazasId: number,
+  targetId: number,
+  szerep: "szerkeszto" | "megtekineto",
+) {
+  return apiFetch<{ sikeres: boolean; uzenet: string }>(
+    `/api/utazasok/${utazasId}/resztvevok/${targetId}`,
+    { method: "PATCH", body: JSON.stringify({ szerep }) },
     true,
   );
 }

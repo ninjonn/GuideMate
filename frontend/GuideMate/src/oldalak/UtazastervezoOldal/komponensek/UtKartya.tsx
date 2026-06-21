@@ -49,28 +49,32 @@ const UtKartya: React.FC<UtKartyaProps> = ({ trip, onOpen, onEdit, onDelete, gla
         >
           Megnyitás
         </Button>
-        <Button
-          bg="white"
-          color="#232B5C"
-          flex={1}
-          borderRadius="lg"
-          _hover={{ bg: 'gray.100' }}
-          onClick={() => onEdit(trip.id)}
-        >
-          Szerkesztés
-        </Button>
+        {trip.sajatSzerep !== 'megtekineto' && (
+          <Button
+            bg="white"
+            color="#232B5C"
+            flex={1}
+            borderRadius="lg"
+            _hover={{ bg: 'gray.100' }}
+            onClick={() => onEdit(trip.id)}
+          >
+            Szerkesztés
+          </Button>
+        )}
       </HStack>
-      <Button
-        mt={3}
-        bg="rgba(255,255,255,0.3)"
-        color="white"
-        width="100%"
-        borderRadius="lg"
-        _hover={{ bg: 'rgba(255,255,255,0.45)' }}
-        onClick={() => void onDelete(trip.id)}
-      >
-        Törlés
-      </Button>
+      {trip.sajatSzerep === 'tulajdonos' && (
+        <Button
+          mt={3}
+          bg="rgba(255,255,255,0.3)"
+          color="white"
+          width="100%"
+          borderRadius="lg"
+          _hover={{ bg: 'rgba(255,255,255,0.45)' }}
+          onClick={() => void onDelete(trip.id)}
+        >
+          Törlés
+        </Button>
+      )}
     </Box>
   );
 };

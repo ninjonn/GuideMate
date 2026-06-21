@@ -14,4 +14,5 @@ export type Trip = {
   programs: number;
   checklistDone: number;
   checklistTotal: number;
+  sajatSzerep: string;
 };

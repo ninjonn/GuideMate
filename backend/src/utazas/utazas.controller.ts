@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -19,10 +20,16 @@ import type {
   UtazasDetailResponse,
   UtazasListResponse,
   UtazasUpdateResponse,
+  ResztvevoListResponse,
+  MeghivoResponse,
+  EltavolitasResponse,
+  SzerepValtoztatásResponse,
 } from './utazas.types';
 import { UtazasQueryDto } from './dto/utazas-query.dto';
 import { CreateUtazasDto } from './dto/create-utazas.dto';
 import { UpdateUtazasDto } from './dto/update-utazas.dto';
+import { MeghivoDto } from './dto/meghivo.dto';
+import { SzerepValtoztatasDto } from './dto/szerep-valtoztatas.dto';
 
 @Controller('api/utazasok')
 @UseGuards(AuthGuard)
@@ -68,5 +75,46 @@ export class UtazasController {
     @Param('id', ParseIntPipe) utazasId: number,
   ): Promise<UtazasDeleteResponse> {
     return this.utazasService.deleteForUser(userId, utazasId);
+  }
+
+  @Get(':id/resztvevok')
+  listParticipants(
+    @UserId() userId: number,
+    @Param('id', ParseIntPipe) utazasId: number,
+  ): Promise<ResztvevoListResponse> {
+    return this.utazasService.listParticipants(userId, utazasId);
+  }
+
+  @Post(':id/meghivok')
+  invite(
+    @UserId() userId: number,
+    @Param('id', ParseIntPipe) utazasId: number,
+    @Body() dto: MeghivoDto,
+  ): Promise<MeghivoResponse> {
+    return this.utazasService.inviteByEmail(userId, utazasId, dto);
+  }
+
+  @Patch(':id/resztvevok/:targetId')
+  changeParticipantRole(
+    @UserId() userId: number,
+    @Param('id', ParseIntPipe) utazasId: number,
+    @Param('targetId', ParseIntPipe) targetId: number,
+    @Body() dto: SzerepValtoztatasDto,
+  ): Promise<SzerepValtoztatásResponse> {
+    return this.utazasService.changeParticipantRole(
+      userId,
+      utazasId,
+      targetId,
+      dto,
+    );
+  }
+
+  @Delete(':id/resztvevok/:targetId')
+  removeParticipant(
+    @UserId() userId: number,
+    @Param('id', ParseIntPipe) utazasId: number,
+    @Param('targetId', ParseIntPipe) targetId: number,
+  ): Promise<EltavolitasResponse> {
+    return this.utazasService.removeParticipant(userId, utazasId, targetId);
   }
 }

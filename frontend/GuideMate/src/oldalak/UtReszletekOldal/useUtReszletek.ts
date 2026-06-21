@@ -4,7 +4,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createEllenorzoLista, listEllenorzoLista } from '../../features/ellenorzo-lista/ellenorzo-lista.api';
 import { createListaElem, deleteListaElem, updateListaElem } from '../../features/lista-elem/lista-elem.api';
 import { createProgram, deleteProgram, updateProgram } from '../../features/program/program.api';
-import { getUtazas, updateUtazas } from '../../features/utazas/utazas.api';
+import {
+  getUtazas,
+  updateUtazas,
+  listResztvevok,
+  meghivResztvevo,
+  eltavolitResztvevo,
+  valtoztatSzerep,
+} from '../../features/utazas/utazas.api';
+import type { ResztvevoItem } from '../../features/utazas/utazas.api';
 import type { ChecklistItem, EventItem } from './utReszletek.types';
 import {
   addDays,
@@ -42,6 +50,10 @@ export const useUtReszletek = () => {
   const [newEventDescription, setNewEventDescription] = useState("");
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
+
+  const [resztvevok, setResztvevok] = useState<ResztvevoItem[]>([]);
+  const [sajatSzerep, setSajatSzerep] = useState<string | null>(null);
+  const [resztvevokLoading, setResztvevokLoading] = useState(false);
 
   const daysScrollRef = useRef<HTMLDivElement | null>(null);
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -302,6 +314,43 @@ export const useUtReszletek = () => {
     setEvents(mappedEvents);
   };
 
+  const loadParticipants = async (utazasId: number) => {
+    setResztvevokLoading(true);
+    try {
+      const res = await listResztvevok(utazasId);
+      setResztvevok(res.resztvevok);
+      setSajatSzerep(res.sajat_szerep);
+    } catch {
+      /* ignore */
+    } finally {
+      setResztvevokLoading(false);
+    }
+  };
+
+  const handleInvite = async (email: string, szerep: 'szerkeszto' | 'megtekineto') => {
+    if (!id) return;
+    await meghivResztvevo(Number(id), email, szerep);
+    await loadParticipants(Number(id));
+    toast({ title: 'Meghívó elküldve', status: 'success' });
+  };
+
+  const handleRemoveParticipant = async (targetId: number) => {
+    if (!id) return;
+    await eltavolitResztvevo(Number(id), targetId);
+    await loadParticipants(Number(id));
+    toast({ title: 'Résztvevő eltávolítva', status: 'success' });
+  };
+
+  const handleChangeRole = async (
+    targetId: number,
+    szerep: 'szerkeszto' | 'megtekineto',
+  ) => {
+    if (!id) return;
+    await valtoztatSzerep(Number(id), targetId, szerep);
+    await loadParticipants(Number(id));
+    toast({ title: 'Szerep módosítva', status: 'success' });
+  };
+
   const loadChecklist = async (utazasId: number) => {
     try {
       const res = await listEllenorzoLista(utazasId);
@@ -325,6 +374,7 @@ export const useUtReszletek = () => {
     if (id && !Number.isNaN(Number(id))) {
       void loadTrip(Number(id));
       void loadChecklist(Number(id));
+      void loadParticipants(Number(id));
     }
   }, [id]);
 
@@ -361,6 +411,9 @@ export const useUtReszletek = () => {
     sortedEvents,
     totalDurationString,
     checklist,
+    resztvevok,
+    sajatSzerep,
+    resztvevokLoading,
     newEventTitle,
     newEventStart,
     newEventEnd,
@@ -389,5 +442,8 @@ export const useUtReszletek = () => {
     confirmAddChecklistItem,
     handleDeleteChecked,
     handleExportDay,
+    handleInvite,
+    handleRemoveParticipant,
+    handleChangeRole,
   };
 };

@@ -20,5 +20,6 @@ export const mapListItemToTrip = (item: UtazasListItem): Trip => {
     programs: item.programok_szama,
     checklistDone: item.ellenorzolista_pipialt ?? 0,
     checklistTotal: item.ellenorzolista_osszes ?? 0,
+    sajatSzerep: item.sajat_szerep,
   };
 };
