@@ -10,6 +10,21 @@ export function setAuthToken(token: string | null) {
   authToken = token;
 }
 
+// Lejart/ervenytelen token eseten kileptetjuk a felhasznalot es a login
+// oldalra iranyitunk. Igy nem "fagy meg" az app 1 ora utan (JWT lejarat).
+function handleSessionExpired() {
+  if (typeof window === "undefined") return;
+  authToken = null;
+  localStorage.removeItem("gm_token");
+  localStorage.removeItem("gm_user");
+  // Csak akkor iranyitunk, ha nem mar a login/regisztracio oldalon vagyunk
+  // (vegtelen redirect ellen).
+  const path = window.location.pathname;
+  if (path !== "/bejelentkezes" && path !== "/regisztracio") {
+    window.location.href = "/bejelentkezes";
+  }
+}
+
 type ApiErrorPayload = {
   message?: string | string[];
 };
@@ -43,10 +58,19 @@ export async function apiFetch<T>(
     headers.set("Authorization", `Bearer ${authToken}`);
   }
 
+  const tokenWasSent = Boolean(auth && authToken);
+
   const res = await fetch(resolveUrl(path), {
     ...options,
     headers,
   });
+
+  // Ha tokennel hivtunk es a szerver 401-et ad, a token lejart/ervenytelen:
+  // kileptetunk. (A login/regisztracio auth=false, igy az ott kapott 401
+  // nem valt ki kileptetest.)
+  if (res.status === 401 && tokenWasSent) {
+    handleSessionExpired();
+  }
 
   let data: unknown = null;
   try {

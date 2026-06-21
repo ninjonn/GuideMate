@@ -72,6 +72,8 @@ model Program {
   letrehozva  DateTime @default(now())
 
   utazas Utazas @relation(fields: [utazas_id], references: [utazas_id])
+
+  @@index([utazas_id])
 }
 
 model Foglalas {
@@ -90,6 +92,8 @@ model Foglalas {
   veg_datum      DateTime?
 
   felhasznalo Felhasznalo? @relation(fields: [felhasznalo_id], references: [felhasznalo_id])
+
+  @@index([felhasznalo_id])
 }
 
 model EllenorzoLista {
@@ -99,6 +103,8 @@ model EllenorzoLista {
 
   utazas Utazas      @relation(fields: [utazas_id], references: [utazas_id])
   elemek ListaElem[]
+
+  @@index([utazas_id])
 }
 
 model ListaElem {
@@ -108,4 +114,6 @@ model ListaElem {
   kipipalva  Boolean @default(false)
 
   lista EllenorzoLista @relation(fields: [lista_id], references: [lista_id])
+
+  @@index([lista_id])
 }

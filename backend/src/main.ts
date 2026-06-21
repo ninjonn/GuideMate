@@ -10,7 +10,16 @@ async function bootstrap() {
   // Enelkul a rate limiter mindenkit egy IP-nek lat es egyutt korlatozna oket.
   app.set('trust proxy', 1);
 
-  app.enableCors({ origin: true, credentials: true });
+  // CORS: ha a CORS_ORIGIN env be van allitva (vesszovel elvalasztott lista),
+  // csak azokat a domaineket engedjuk. Ha nincs (pl. lokalis fejlesztes),
+  // minden originbol jovo kerest elfogadunk.
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true,
+    credentials: true,
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
   await app.listen(process.env.PORT ?? 3000);
