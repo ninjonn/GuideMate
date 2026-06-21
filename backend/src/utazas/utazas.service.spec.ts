@@ -68,6 +68,8 @@ describe('UtazasService', () => {
         kezdo_datum: new Date('2026-02-01'),
         veg_datum: new Date('2026-02-03'),
         _count: { programok: 4, listak: 1 },
+        listak: [],
+        resztvevok: [{ szerep: 'tulajdonos' }],
       },
     ]);
     prismaMock.$transaction.mockImplementation(async (ops) => Promise.all(ops));
@@ -89,6 +91,9 @@ describe('UtazasService', () => {
           programok_szama: 4,
           jegyek_szama: 0,
           ellenorzolistak_szama: 1,
+          ellenorzolista_pipialt: 0,
+          ellenorzolista_osszes: 0,
+          sajat_szerep: 'tulajdonos',
         },
       ],
       osszesen: 1,
@@ -233,6 +238,7 @@ describe('UtazasService', () => {
     prismaMock.utazasResztvevo.findFirst.mockResolvedValue({
       utazas_id: 2,
       felhasznalo_id: 1,
+      szerep: 'tulajdonos',
     });
     prismaMock.$transaction.mockImplementation(
       (callback: (prisma: unknown) => Promise<unknown>) =>

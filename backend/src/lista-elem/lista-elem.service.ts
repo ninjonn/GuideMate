@@ -38,7 +38,7 @@ export class ListaElemService {
       throw new NotFoundException('Ellenorzolista nem talalhato.');
     }
 
-    await this.participantService.ensureParticipant(lista.utazas_id, userId);
+    await this.participantService.ensureEditor(lista.utazas_id, userId);
 
     const created = await this.prisma.listaElem.create({
       data: { lista_id: listaId, megnevezes: dto.megnevezes },
@@ -66,7 +66,7 @@ export class ListaElemService {
       throw new NotFoundException('Elem nem talalhato.');
     }
 
-    await this.participantService.ensureParticipant(
+    await this.participantService.ensureEditor(
       existing.lista.utazas_id,
       userId,
     );
@@ -104,7 +104,7 @@ export class ListaElemService {
       throw new NotFoundException('Elem nem talalhato.');
     }
 
-    await this.participantService.ensureParticipant(
+    await this.participantService.ensureEditor(
       existing.lista.utazas_id,
       userId,
     );

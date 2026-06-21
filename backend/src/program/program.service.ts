@@ -57,7 +57,7 @@ export class ProgramService {
     utazasId: number,
     dto: CreateProgramDto,
   ): Promise<ProgramCreateResponse> {
-    await this.participantService.ensureParticipant(utazasId, userId);
+    await this.participantService.ensureEditor(utazasId, userId);
 
     const napDatumValue = new Date(dto.nap_datum);
     const created = await this.prisma.program.create({
@@ -101,7 +101,7 @@ export class ProgramService {
       throw new NotFoundException('Program nem talalhato.');
     }
 
-    await this.participantService.ensureParticipant(existing.utazas_id, userId);
+    await this.participantService.ensureEditor(existing.utazas_id, userId);
 
     if ((dto.kezdo_ido && !dto.veg_ido) || (!dto.kezdo_ido && dto.veg_ido)) {
       throw new BadRequestException('A kezdo es veg ido egyutt kotelezo.');
@@ -163,7 +163,7 @@ export class ProgramService {
       throw new NotFoundException('Program nem talalhato.');
     }
 
-    await this.participantService.ensureParticipant(existing.utazas_id, userId);
+    await this.participantService.ensureEditor(existing.utazas_id, userId);
     await this.prisma.program.delete({ where: { program_id: programId } });
 
     return {

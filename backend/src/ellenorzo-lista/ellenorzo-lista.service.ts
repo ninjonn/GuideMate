@@ -51,7 +51,7 @@ export class EllenorzoListaService {
     utazasId: number,
     dto: CreateEllenorzoListaDto,
   ): Promise<EllenorzoListaCreateResponse> {
-    await this.participantService.ensureParticipant(utazasId, userId);
+    await this.participantService.ensureEditor(utazasId, userId);
 
     const created = await this.prisma.ellenorzoLista.create({
       data: { utazas_id: utazasId, lista_nev: dto.lista_nev },
@@ -76,7 +76,7 @@ export class EllenorzoListaService {
       throw new NotFoundException('Ellenorzolista nem talalhato.');
     }
 
-    await this.participantService.ensureParticipant(existing.utazas_id, userId);
+    await this.participantService.ensureEditor(existing.utazas_id, userId);
 
     const toroltElemekSzama = await this.prisma.$transaction(async (tx) => {
       const deleted = await tx.listaElem.deleteMany({
