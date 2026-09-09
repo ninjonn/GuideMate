@@ -113,6 +113,7 @@ export const useUtazastervezo = () => {
     }
 
     if (isGeneralList) {
+      // eslint-disable-next-line react-hooks/purity -- runs inside a user-triggered click handler (confirmAddItem), not during render; Date.now() here only generates a temporary local id.
       const localId = -(Date.now());
       const newItem = { id: localId, text: newItemName.trim(), isChecked: false };
       setChecklist((prev) => {
@@ -234,6 +235,7 @@ export const useUtazastervezo = () => {
   useEffect(() => {
     const state = location.state as { ujTrip?: Trip; frissitettTrip?: Trip } | null;
     if (state?.ujTrip || state?.frissitettTrip) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- consumes one-time router navigation state (new/updated trip passed back from a sub-page) and clears it via navigate(); must run once when that state appears, not derivable at render time.
       setTrips((prev) => {
         let next = [...prev];
         if (state.frissitettTrip) {
@@ -242,7 +244,7 @@ export const useUtazastervezo = () => {
             next[idx] = state.frissitettTrip!;
           } else {
             next = [...next, state.frissitettTrip!];
-          }
+        }
         }
         if (state.ujTrip && !next.some((t) => t.id === state.ujTrip!.id)) {
           next = [...next, state.ujTrip!];
@@ -282,6 +284,7 @@ export const useUtazastervezo = () => {
 
   useEffect(() => {
     if (!activeTripId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- keeps the trip list's checklist-progress summary in sync with the active trip's checklist state; scoped update to one trip, no cascading loop.
     setTrips((prev) =>
       prev.map((t) =>
         t.id === activeTripId

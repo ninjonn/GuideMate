@@ -201,6 +201,7 @@ export const useTerkepOldal = () => {
 
   useEffect(() => {
     if (!selectedTrip) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the day selector when the selected trip changes; single value, no cascading updates.
     setSelectedDay(1);
   }, [selectedTripId, selectedTrip]);
 

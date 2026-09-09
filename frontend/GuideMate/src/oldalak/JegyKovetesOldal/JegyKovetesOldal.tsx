@@ -49,6 +49,7 @@ const JegyKovetesOldal: React.FC = () => {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets a loading flag before its first `await`; standard fetch-on-mount pattern, not a cascading render.
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

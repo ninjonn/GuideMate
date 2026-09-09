@@ -66,12 +66,14 @@ export const useAdminOldal = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadStats sets a loading flag before its first `await`; standard fetch-on-mount pattern, not a cascading render.
     void loadStats();
     void loadUsers(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadUsers sets a loading flag before its first `await`; standard fetch-on-filter-change pattern, not a cascading render.
     void loadUsers(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);

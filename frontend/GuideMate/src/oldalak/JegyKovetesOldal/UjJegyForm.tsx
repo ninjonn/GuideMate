@@ -69,6 +69,7 @@ const UjJegyForm: React.FC = () => {
     if (!isEdit || foglalasId === null || Number.isNaN(foglalasId)) return;
     const stateFoglalas = (location.state as { foglalas?: Foglalas } | null)?.foglalas;
     if (stateFoglalas?.azonosito === foglalasId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time form hydration from router navigation state when editing; avoids a redundant API call, not a cascading render.
       applyFoglalas(stateFoglalas);
       return;
     }
