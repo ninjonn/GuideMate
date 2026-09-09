@@ -373,6 +373,7 @@ export const useUtReszletek = () => {
   useEffect(() => {
     if (id && !Number.isNaN(Number(id))) {
       void loadTrip(Number(id));
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loadChecklist only calls setState after its `await`; standard fetch-on-mount pattern, not a cascading render.
       void loadChecklist(Number(id));
       void loadParticipants(Number(id));
     }
